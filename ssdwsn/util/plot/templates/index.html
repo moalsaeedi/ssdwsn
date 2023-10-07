@@ -1,0 +1,1511 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <!--Import Google Icon Font-->
+    <link href="/static/materialize/font/font.css" rel="stylesheet">
+    <!--Import materialize.css-->
+    <link type="text/css" rel="stylesheet" href="/static/materialize/css/materialize.min.css"  media="screen,projection"/>
+
+    <!--Let browser know website is optimized for mobile-->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <link href="/static/jquery-terminal/jquery.terminal.min.css" rel="stylesheet"/>
+    <link rel="stylesheet" type="text/css" href="/static/css/styles.css"></link>
+  </head>
+  <body class="container" oncontextmenu="return false;">
+
+
+<nav>
+    <div class="nav-wrapper">
+      <a href="#!" class="brand-logo"><img class="responsive-img" src="/static/image/ssdwsn_icon.png"></a>
+      <a href="#" data-target="mobile-demo" class="sidenav-trigger"><i class="material-icons">menu</i></a>
+      <ul class="right hide-on-med-and-down">
+        <!-- <li><a class="btn-floating btn-large waves-effect waves-light"><i class="material-icons">add</i></a></li> -->
+        <li><a id="hour" class="label-small"></a></li>
+        <li><a id="min" class="label-small"></a></li>
+        <li><a id="sec" class="label-small"></a></li>
+        <li><a id="addctrlbtn">ADD CONTROLLER<i class="material-icons right">add</i></a></li>
+        <li><a id="startbtn">START<i class="material-icons right">play_arrow</i></a></li>
+        <!-- <li><a id="resetbtn">RESET<i class="material-icons right">replay</i></a></li> -->
+        <li><a id="stopbtn">STOP<i class="material-icons right">stop</i></a></li>
+        <li><a id="savebtn">SAVE<i class="material-icons right">save</i></a></li>
+        <li><a id="uploadbtn">RELOAD<i class="material-icons right">input</i></a></li>
+        <li><a id="settingbtn">SETTINGS<i class="material-icons right">settings</i></a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <ul class="sidenav" id="mobile-demo">
+    <li><a id="raddctrlbtn">ADD CONTROLLER<i class="material-icons right">add</i></a></li>
+    <li><a id="rstartbtn">START<i class="material-icons right">play_arrow</i></a></li>
+    <!-- <li><a id="resetbtn">RESET<i class="material-icons right">replay</i></a></li> -->
+    <li><a id="rstopbtn">STOP<i class="material-icons right">stop</i></a></li>
+    <li><a id="rsavebtn">SAVE<i class="material-icons right">save</i></a></li>
+    <li><a id="ruploadbtn">RELOAD<i class="material-icons right">input</i></a></li>
+    <li><a id="rsettingbtn">SETTING<i class="material-icons right">settings</i></a></li>
+  </ul>
+      <!-- Modal Add Node -->
+  <div id="addnode" class="modal">
+    <div class="modal-content">
+      <h5>ADD NODE (MOTE/SINK)</h5>
+	 <div class="col s6">
+		<form id="addnodeform" action="#" method="post">
+      <div class="row">
+            <div class="input-field col s3">
+                <label>
+                    <input name="issink" id="issink" type="checkbox"/>
+                    <span>IS SINK</span>
+                </label>
+            </div>
+            <div class="input-field col s3">
+                <input name="net" id="net" type="text" class="validate" value="1">
+                <span>SUBNET</span>
+            </div>
+            <div class="input-field col s3">
+                <input name="addr" id="addr" type="text" class="validate">
+                <span>ADDRESS</span>
+            </div>
+            <div class="input-field col s3">
+                <select id="ctrl" name="ctrl">
+                    <option value="" disabled selected>Choose your option</option>   
+                </select>
+                <span>CONTROLLER</span>
+            </div>
+            <div class="input-field col s3">
+                <select id="datatype" name="datatype">
+                <!-- <option value="" disabled selected>Choose your option</option> -->
+                <!-- <option value="temperature">Temperature-Sensor</option> -->
+                </select>
+                <span>TYPE</span>
+            </div>
+            <div class="input-field col s3">
+                <input name="x" id="xpos" type="text" class="validate" editable="false">
+                <span>X</span>
+            </div>
+            <div class="input-field col s3">
+                <input name="y" id="ypos" type="text" class="validate">
+                <span>Y</span>
+            </div>
+            <div class="input-field col s3">
+                <input name="z" id="zpos" type="text" class="validate">
+                <span>Z</span>
+            </div>
+            <div class="input-field col s12">
+                <input name="batt" type="range" id="batt" min="0" max="9000000" value="50000" />
+                <span>BATTERY (mC)</span>
+           </div>
+		 <div class="input-field col s12">
+          <button type="submit" class="modal-action modal-close waves-effect waves-light btn">ADD</button>
+        </div>        
+      </div>	
+      </form>
+     </div>
+    </div>
+    <div class="modal-footer">
+      <a href="#!" class="modal-action modal-close waves-effect waves-green btn-flat">Close</a>
+    </div>
+  </div>
+<!-- Modal Add Controller -->
+<div id="addctrl" class="modal">
+<div class="modal-content">
+<h5>ADD CONTROLLER</h5>
+<div class="col s6">
+  <form id="addctrlform" action="#" method="post">
+<div class="row">
+    <div class="input-field col s12">
+        <select id="ctrltype" name="ctrltype">
+          <!-- <option value="" disabled selected>Choose your option</option> -->
+          <!-- <option value="dctrl">Controller-Dijkstra</option> -->
+        </select>
+        <span>CONTROLLER TYPE</span>
+      </div>
+      <div class="input-field col s6">
+          <input name="ip" id="ip" type="text" class="validate" value="127.0.0.1">
+          <span>IP</span>
+      </div>
+      <div class="input-field col s6">
+          <input name="port" id="port" type="text" class="validate">
+          <span>PORT SEQ</span>
+      </div>
+   <div class="input-field col s12">
+    <button type="submit" class="modal-action modal-close waves-effect waves-light btn">ADD</button>
+  </div>        
+</div>	
+</form>
+</div>
+</div>
+<div class="modal-footer">
+<a href="#!" class="modal-action modal-close waves-effect waves-green btn-flat">Close</a>
+</div>
+</div>
+<!-- Modal SETTING -->
+<div id="setting" class="modal">
+    <div class="modal-content">
+    <h5>SIMULATION SETTING</h5>
+    <div class="col s6">
+      <form id="settingform" action="#" method="post">
+    <div class="row">
+        <div class="input-field col s6">
+            <select id="ppmtype" name="ppmtype">
+              <!-- <option value="" disabled selected>Choose your option</option> -->
+              <!-- <option value="dctrl">Controller-Dijkstra</option> -->
+            </select>
+            <span>WIRELESS PROPAGATION MODEL</span>
+          </div>
+          <div class="input-field col s6">
+              <select id="intftype" name="intftype">
+              <!-- <option value="" disabled selected>Choose your option</option> -->
+              <!-- <option value="temperature">Temperature-Sensor</option> -->
+              </select>
+              <span>INTERFACE TYPE</span>
+          </div>
+          <div class="input-field col s3">
+              <input name="ftsize" type="range" id="ftsize" min="0" max="1000" value="1000" />
+              <span>FLOW TABLE SIZE (entries)</span>
+         </div>
+          <div class="input-field col s3">
+              <input name="idletimeout" type="range" id="idletimeout" min="0" max="254" value="254" />
+              <span>ENTRY IDLE-TIMEOUT (sec)</span>
+         </div>
+          <div class="input-field col s3">
+            <input name="buffersize" type="range" id="buffersize" min="0" max="100" value="100" />
+            <span>BUFFER (# of packets)</span>
+        </div>
+        <div class="input-field col s3">
+          <input name="maxdelay" type="range" id="maxdelay" min="0" max="200" value="150" />
+          <span>MAX DELAY (msec)</span>
+      </div>
+        <div class="input-field col s4">
+          <input name="beaconstti" type="range" id="beaconstti" min="0" max="5000" value="500" />
+          <span>BEACONS TTI (msec)</span>
+      </div>
+      <div class="input-field col s4">
+        <input name="reportstti" type="range" id="reportstti" min="0" max="5000" value="1000" />
+        <span>REPORTS TTI (msec)</span>
+    </div>
+      <div class="input-field col s4">
+        <input name="randomseed" type="range" id="randomseed" min="0" max="100" value="50" />
+        <span>RANDOM SEED</span>
+    </div>
+          <div class="input-field col s4">
+              <input name="mxnodes" type="range" id="mxnodes" min="0" max="1000" value="1000" />
+              <span>MAX MOTES</span>
+         </div>
+         <div class="input-field col s4">
+             <input name="gridwidth" type="range" id="gridwidth" min="1500" max="10000" value="10000" />
+             <span>GRID WIDTH (1px = 10m)</span>
+        </div>
+         <div class="input-field col s4">
+             <input name="gridheight" type="range" id="gridheight" min="1500" max="10000" value="10000" />
+             <span>GRID HEIGHT (1px = 10m)</span>
+        </div>
+       <div class="input-field col s12">
+        <button type="submit" class="modal-action modal-close waves-effect waves-light btn">UPDATE</button>
+      </div>        
+    </div>	
+    </form>
+    </div>
+    </div>
+    <div class="modal-footer">
+    <a href="#!" class="modal-action modal-close waves-effect waves-green btn-flat">Close</a>
+    </div>
+    </div>
+
+<!-- Modal SAVE Topology -->
+<div id="savetopo" class="modal">
+    <div class="modal-content">
+    <h5>TOPOLOGY FILE NAME</h5>
+    <div class="col s6">
+      <form id="savetopoform" action="#" method="post">
+    <div class="row">
+        <div class="input-field col s12">
+            <input name="filename" id="filename" type="text" class="validate" editable="true" value="topo">
+        </div>
+        <div class="input-field col s12">
+         <button type="submit" class="modal-action modal-close waves-effect waves-light btn">SAVE</button>
+       </div>    
+      </div>
+    </form>
+    </div>
+  <div class="modal-footer">
+  <a href="#!" class="modal-action modal-close waves-effect waves-green btn-flat">Close</a>
+  </div>
+  </div>
+  </div>
+<!-- Modal Upload File -->
+<div id="uploadfile" class="modal">
+    <div class="modal-content">
+    <h5>OPEN ssdwsn PROJECT</h5>
+    <div class="col s6">
+<form id="uploadform" action="#" >
+    <div class="file-field input-field">
+      <div class="btn">
+        <span>File</span>
+        <input type="file" accept=".json">
+      </div>
+      <div class="file-path-wrapper">
+        <input id="fname" name="fname" class="file-path validate" type="text">
+      </div>
+      <div class="input-field col s12">
+       <button type="submit" class="modal-action modal-close waves-effect waves-light btn">UPLOAD</button>
+     </div>  
+    </div>
+  </form>
+</div>
+</div>
+<div class="modal-footer">
+<a href="#!" class="modal-action modal-close waves-effect waves-green btn-flat">Close</a>
+</div>
+</div>
+
+<div class="row">
+    <div id="ctrlpanel" class="grid-example col s12">
+        <ul id="ctrls" class="hide-on-med-and-down"></ul>
+    </div>
+</div>       
+<div class="row">          
+    <div id="d3-container" class="grid-example col s12"></div>
+</div>      
+<div class="row">          
+    <div id="monitor-board" class="grid-example col s12">
+        <div class="col s12 m3"><a>Packets (sent-src): </a><a id="sentpackets" class="stats"></a></div>
+        <div class="col s12 m3"><a>Packets (received-dst): </a><a id="recvpackets" class="stats"></a></div>
+        <div class="col s12 m3"><a>Packets (dropped): </a><a id="droppackets" class="stats"></a></div>
+        <div class="col s12 m3"><a>Beacons: </a><a id="nbeacons" class="stats"></a></div>
+        <div class="col s12 m3"><a>Packet-In: </a><a id="npacketin" class="stats"></a></div>
+        <div class="col s12 m3"><a>Packet-Out: </a><a id="npacketout" class="stats"></a></div>
+        <div class="col s12 m3"><a>EnergyCons. (mC/s): </a><a id="avgengconsumption" class="stats"></a></div>
+        <div class="col s12 m3"><a>Delay (ms): </a><a id="avgdelay" class="stats"></a></div>
+        <div class="col s12 m3"><a>Throughput (kbit/s): </a><a id="avgthroughput" class="stats"></a></div>
+        <!-- <div id="terminal-container"></div> -->
+    </div>    
+</div>
+
+
+<script src="/static/js/d3.v3.min.js" charset="utf-8"></script>
+<script src="/static/js/jquery.min.js" charset="utf-8"></script>
+<script src="/static/js/socket.io.min.js" charset="utf-8"></script>
+<script src="/static/materialize/js/materialize.min.js" charset="utf-8"></script>
+<script src="/static/jquery-terminal/jquery.terminal.min.js" charset="utf-8"></script>
+<script>      
+var nxt_node_id_count = "nxt_node" in sessionStorage ? reloaddata("nxt_node") : 0;
+var nxt_ctrl_port_count = "nxt_ctrl" in sessionStorage ? reloaddata("nxt_ctrlport") : 0;
+var nxt_node_port_count = "nxt_port" in sessionStorage ? reloaddata("nxt_nodeport") : 0;
+var controllers = "ctrls" in sessionStorage ? reloaddata("ctrls") : [];
+var settings = "configs" in sessionStorage ? reloaddata("configs") : {};
+var nodeids = [];
+var packetin = 0;
+var packetout = 0;
+var sentpackets = 0;
+var recvpackets = 0;
+var droppackets = 0;
+var beacons = 0;
+var state_time = 0; //timestamp
+var avgenergy = 0; //network avg energy at a timestamp
+var delays = {};
+var throughputs = {};
+var avgdelay = 0.0;
+var avgthroughput = 0.0;
+var avgengconsumption = 0.0;
+var tmppath = '';
+var currscale = 0.0;
+var currtrans = [0.0, 0.0];
+/*
+var term = $('#terminal-container').terminal({
+    foo: async function() {
+        this.echo('.', {newline: false});
+        await sleep(1000);
+        this.echo('.', {newline: false});
+        await sleep(1000);
+        this.echo('.', {newline: false});
+    }
+});  
+*/
+var Clock = {
+    
+    totalSeconds: 0,
+
+    start: function () {
+        var self = this;
+
+        this.interval = setInterval(function () {
+            self.totalSeconds += 1;
+
+            $("#hour").text(Math.floor(self.totalSeconds / 3600));
+            $("#min").text(Math.floor(self.totalSeconds / 60 % 60));
+            $("#sec").text(parseInt(self.totalSeconds % 60));
+        }, 1000);
+    },
+
+    pause: function () {
+        clearInterval(this.interval);
+        delete this.interval;
+    },
+
+    resume: function () {
+        if (!this.interval) this.start();
+    }
+};
+
+const socket = io.connect();
+// var socket = io.connect();
+var elem = document.querySelector('.sidenav');
+var instance = new M.Sidenav(elem);
+$(window).ready(function(){
+    socket.emit('getresources');
+    // socket.emit('sr_getgraph', namespace='/ctrl');
+    $('.sidenav').sidenav();
+    $('.modal').modal();
+    //  $('select').material_select();
+    $('select').formSelect();
+});       
+
+// $(window).ready(function(){socket.emit('sr_getgraph');});
+// // $(window).load(function() {socket.emit('getgraph');});
+
+// window.addEventListener('load', (event) => {
+//     socket.emit('sr_getgraph');
+// });
+var width = $(document).width();
+var height = $(document).height() - ($(document).height() * 0.20);
+//Toggle stores whether the highlighting is on
+var toggle = 0;
+
+//Create an array logging what is connected to what
+var linkedByIndex = {};
+
+d3.select("body").style("background-color", "white");
+
+var outer = d3.select("#d3-container").append("svg")
+            .attr("width", width)
+            .attr("height", height)
+            .attr("class", "grid-example col s12")
+            .attr("pointer-events", "all");            
+    
+var vis = outer.append('svg:g')
+            .attr("class", "grid-example col s12")
+            .call(d3.behavior.zoom().scaleExtent([0.15, 5]).on("zoom", rescale))
+            .call(d3.behavior.drag().on('drag', retrans))
+            .on("dblclick.zoom", null)
+            .on("mousedown", function(d) {d3.select(this).style("cursor", "move")})
+            .on("mouseup", function(d) {d3.select(this).style("cursor", "crosshair")})
+            .on("mouseover", function(d) {d3.select(this).style("cursor", "crosshair")});
+
+var def = vis.append('svg:defs')
+    
+var pattern1 = def.append('svg:pattern')
+                .attr('id', 'smallGrid')
+                .attr('width', '10')
+                .attr('height', '10')
+                .attr('patternUnits', 'userSpaceOnUse')
+                .append('svg:path')
+                .attr('d', 'M 10 0 L 0 0 0 10')
+                .attr('fill', 'none')
+                .attr('stroke', 'black')
+                .attr('stroke-width', '0.5')
+
+var pattern2 = def.append('svg:pattern')
+                .attr('id', 'grid')
+                .attr('width', '100')
+                .attr('height', '100')
+                .attr('patternUnits', 'userSpaceOnUse');
+
+pattern2.append('svg:path')
+.attr('d', 'M 100 0 L 0 0 0 100')
+.attr('fill', 'none')
+.attr('stroke', 'blue')
+.attr('stroke-width', '2');
+pattern2.append('svg:rect')
+.attr('width', '100')
+.attr('height', '100')
+.attr('fill', 'url(#smallGrid)');
+
+vis.append('svg:rect')
+    .attr('id', 'maingrid')
+    .attr('width', 15000)
+    .attr('height', 15000)
+    .attr('fill', 'url(#grid)');
+
+var force = d3.layout.force()
+    .size([width, height])
+    .nodes([]) // initialize with a single node
+    .linkDistance(1)
+    .charge(-500)
+    .on("tick", tick);
+
+var nodes = force.nodes();
+var links = force.links();
+
+draw();
+var previous = null;
+var current = null;
+
+// setInterval(function(){
+//     $.ajax({
+//         type: "POST",
+//         url: '/getgraph',
+//         // type: "post",
+//         async: true,
+//         datatype: "json",
+//         success: function(json, textStatus, XMLHttpRequest) 
+//         {
+//             draw();
+//         }
+//     });
+// },1000);
+
+socket.on('connect', function() {
+    console.log('********** START ssdwsn VISUALIZATION **********');
+    socket.emit('getresources')
+    // socket.emit('sr_getgraph', namespace='/ctrl')
+});
+
+socket.on('sr_resources', function(msg, cb){
+    data = jQuery.parseJSON(msg);
+    var Options1="";
+    for(key in data['controllers']){
+        Options1=Options1+"<option value="+data['controllers'][key]+">"+data['controllers'][key]+"</option>";
+    };
+    $('#ctrltype').empty();
+    $('#ctrltype').append(Options1);
+    $("#ctrltype").formSelect();
+    Options2 = "";
+    for(key in data['sensors']){
+        Options2=Options2+"<option value="+data['sensors'][key]+">"+data['sensors'][key]+"</option>";
+    };
+    $('#datatype').empty();
+    $('#datatype').append(Options2);
+    $("#datatype").formSelect();
+    Options3 = ""
+    for(key in data['ppms']){
+        Options3=Options3+"<option value="+data['ppms'][key]+">"+data['ppms'][key]+"</option>";
+    };
+    $('#ppmtype').empty();
+    $('#ppmtype').append(Options3);
+    $("#ppmtype").formSelect();
+
+    Options4 = "";
+    for(key in data['intfs']){
+        Options4=Options4+"<option value="+data['intfs'][key]+">"+data['intfs'][key]+"</option>";
+    };
+    // console.log(data['intfs']);
+    $('#intftype').empty();
+    $('#intftype').append(Options4);
+    $("#intftype").formSelect();
+
+    //set initial default settings
+    settings['ppm'] =data['ppms'][0];
+    settings['intftype'] = data['intfs'][0]
+    settings['mxnodes'] = data['mxnodes'];
+    settings['mxport'] = data['mxport'];
+    settings['mnport'] = data['mnport'];
+    settings['ftsize'] = data['ftsize']
+    settings['idletimeout'] = data['idletimeout']
+    settings['buffersize'] = data['buffersize']
+    settings['maxdelay'] = data['maxdelay']
+    settings['beaconstti'] = data['beaconstti']
+    settings['reportstti'] = data['reportstti']
+    settings['randomseed'] = data['randomseed']
+    settings['gridwidth'] = $('#gridwidth').val()
+    settings['gridheight'] = $('#gridheight').val()   
+    sessionStorage.setItem("configs", JSON.stringify(settings));     
+    $('#mxnodes').val(parseInt(data['mxnodes']));
+    $('#ftsize').val(parseInt(data['ftsize']));
+    $('#idletimeout').val(parseInt(data['idletimeout']));
+    $('#buffersize').val(parseInt(data['buffersize']));
+    $('#maxdelay').val(parseInt(data['maxdelay']));
+    $('#beaconstti').val(parseInt(data['beaconstti']));
+    $('#reportstti').val(parseInt(data['reportstti']));
+    // e.preventDefault();
+});
+
+socket.on('sr_rxpacketin', function(cb){
+    packetin++;
+    // term.echo(msg);
+    $('#npacketin').text(packetin);
+});
+
+socket.on('sr_txpacketout', function(cb){
+    packetout++;
+    // term.echo(msg);
+    $('#npacketout').text(packetout);
+});
+
+socket.on('sr_txbeacon', function(data, cb){
+    beacons+= data['val'];
+    $('#nbeacons').text(beacons);
+});
+
+socket.on('sr_txpacket', function(data, cb){
+    sentpackets+= data['val'];
+    $('#sentpackets').text(sentpackets);
+    // console.log(data);
+});
+
+socket.on('sr_droppacket', function(data, cb){
+    droppackets+= data['val'];
+    $('#droppackets').text(droppackets);
+});
+
+socket.on('sr_rxpacket', function(data, cb){
+    recvpackets+= data['val'];
+    $('#recvpackets').text(recvpackets);
+    /*
+    data = jQuery.parseJSON(msg);
+    delays[data['id']] = data['delay'];
+    throughputs[data['id']] = data['throughput'];
+
+    if( Object.keys(delays).length >= 5){
+        avg = 0;
+        
+        // Delay
+        delay_sum = 0;
+        len = 0;
+        $.each(delays, function(index, value){
+            delay_sum += value;
+            len += 1;
+        });
+
+        avg = parseFloat(delay_sum/len);
+        delays = {};
+        avgdelay = avg.toFixed(4)
+        // $('#avgdelay').text(avgdelay);
+
+        throughput_sum = 0;
+        len = 0;
+        $.each(throughputs, function(index, value){
+            throughput_sum += value;
+            len += 1;
+        });
+        avg = parseFloat(throughput_sum/len); //kB/s
+        throughputs = {};
+        avgthroughput = avg.toFixed(4)
+        // $('#avgthroughput').text(avg.toFixed(4));
+        // console.log(data);
+        
+    };*/
+});
+
+/*
+socket.on('sr_getstate', function(cb){
+    data = {};
+    curr_time = $.now();
+    data['avgdelay'] = avgdelay;
+    data['avgthroughput'] = avgthroughput;
+    eng_sum = 0;
+    size = 0;
+    $.each(nodes, function(index, node) {
+            // console.log(node);
+            if(node['color'] != 'red' && node['active'] == true){
+                eng_sum += parseInt(node['batt']);
+            }
+            size++;
+        });
+    curr_avgenergy = parseFloat(eng_sum/size).toFixed(4);
+    if((avgenergy - curr_avgenergy) > 0.0000){
+        avgengconsumption = parseFloat((avgenergy - curr_avgenergy)/(curr_time - state_time)).toFixed(4);
+    };    
+    data['avgengconsumption'] = avgengconsumption;
+
+    $('#avgdelay').text(avgdelay);
+    $('#avgthroughput').text(avgthroughput);
+    $('#avgengconsumption').text(avgengconsumption);
+
+    socket.emit('setstate', data);
+});
+*/
+socket.on('sr_showstats', function(data, cb){
+    $('#avgdelay').text(data['avgdelay']);
+    $('#avgthroughput').text(data['avgthroughput']);
+    $('#avgengconsumption').text(data['avgengcons']);
+});
+/*
+socket.on('sr_getenergy', function(cb){
+    state_time = $.now();
+    eng_sum = 0;
+    size = 0;
+    $.each(nodes, function(index, node) {
+            // console.log(node);
+            if(node['color'] != 'red' && node['active'] == true){
+                eng_sum += parseInt(node['batt']);
+            }
+            size++;
+        });
+    avgenergy = parseFloat(eng_sum/size).toFixed(4);
+});
+*/
+
+// socket.on('sr_tosinklink', function(data, cb){
+//     // plinks = [];
+//     // plinks.push(data);
+//     // plink = link.data(plinks);
+//     // console.log(plinks);
+//     // plink.enter().insert("line",":first-child").attr({
+//     //     "stroke-width": 1,
+//     //     "class": "link",
+//     //     'stroke': function(d){return d.color;}});
+//     // plink.exit().remove();
+//     // force.start();
+//     $.each(links, function(index, link) {
+//         // console.log(node);
+//         $.each(data, function(index, d){
+//             if(link['source'] == d['source'] && link['target'] == d['target']){
+//                 link['color'] = d['color'];
+//             }            
+//         });
+//     });
+//     // links.forEach(dict => this.addRow([obj.type, obj.time]));
+// });
+
+socket.on('sr_linkcolor', function(data, cb){
+    nodeMap = {};
+    nodes.forEach(function(x) {nodeMap[x.id] = x; nodeids.push(x.id);})
+    var dd = data.links.map(function(x){
+        linkedByIndex[x.source.index + "," + x.target.index] = 1;
+        // console.log(x);
+        // console.log(x.source);
+        // console.log(x.target);
+        // console.log(nodeMap[x.source]);
+        // console.log(nodeMap[x.target]);
+        return {
+            source: nodeMap[x.source],
+            target: nodeMap[x.target],
+            color: x.color,
+        };
+    });
+    // console.log(data);
+    // for(ln in data['links']) {
+    //     console.log();
+    //     // console.log(links);
+    //     // console.log(data[ln]['source']);
+    //     // console.log(data[ln]['target']);
+    //     // links[data[ln]['source']+'-'+data[ln]['target']].color = data[ln]['color'];
+    // };
+    // $.each(data['links'], function (i,link){
+    //     console.log(link);
+    //     console.log(links);
+    //     // links[link.source+'-'+link.target].color = link.color;
+    // });
+    // console.log(links[0])
+    // $.each(data.links, function(index, d){
+    //     $.each(links, function(index, link) {
+    //     // console.log(node);
+    //         if(link['source'] == d['source'] && link['target'] == d['target']){
+    //             link['color'] = d['color'];
+    //             return true;
+    //         };
+    //         // console.log(d);
+    //         console.log(link);
+
+    //     });
+    // });
+});
+
+socket.on('sr_showgraph', function(json, cb) {
+
+        // current = JSON.stringify(json);
+        current = json;
+        if (previous !== current) {
+            current_nodes = [];
+            links = [];
+            nodes = [];
+            nodeids = [];
+            // delete_nodes = [];
+            // console.log(nodes);
+            // var json = $.parseJSON(json);
+            console.log('UPDATE ssdwsn NET')   
+            nodes = json.nodes;
+            
+            nodeMap = {};
+
+            nodes.forEach(function(x) { nodeMap[x.id] = x; nodeids.push(x.id);});
+            // if (json.links.length != 0){
+            links = json.links.map(function(x) {
+                linkedByIndex[x.source.index + "," + x.target.index] = 1;
+                return {
+                    source: nodeMap[x.source],
+                    target: nodeMap[x.target],
+                    rssi: nodeMap[x.rssi],
+                    color: x.color,
+                };
+            });
+            // console.log(nodes);
+            // console.log(links);
+            // console.log(nodeids);
+            // };
+            // $.each(json.nodes, function (i,data){
+            
+            // });
+            /*
+            console.log(json.nodes);
+            $.each(json.nodes, function (i,data){
+                // linkedByIndex[i + "," + i] = 1;
+                result = $.grep(nodes, function(e){ return e.id == data.id; });
+                if (!result.length)
+                {
+                    nodes.push(data);
+                }
+                else
+                {
+                    id = nodes.map(function(e) { return e.id; }).indexOf(data.id);
+                    nodes[id].color = data.color;
+                    nodes[id].antrange = data.antrange;
+                    nodes[id].batt = data.batt;
+                    nodes[id].distance = data.distance;
+                    nodes[id].denisty = data.denisty;
+                    // nodes[id].weight = data.weight;
+                    nodes[id].delay = data.delay;
+                    nodes[id].throughput = data.throughput;
+                    nodes[id].engcons = data.engcons;
+                    nodes[id].pos = data.pos;
+                    nodes[id].x = data.pos[0];
+                    nodes[id].y = data.pos[1];
+                    nodes[id].active = data.active;
+                }
+                current_nodes.push(data.id);             
+            });
+
+            $.each(nodes,function(i,data){
+                if(current_nodes.indexOf(data.id) == -1)
+                {
+                    delete_nodes.push(data.index);
+                }       
+            });
+            $.each(delete_nodes,function(i,data){
+                nodes.splice(data,1); 
+            });
+
+            nodeMap = {};
+            nodes.forEach(function(x) { nodeMap[x.id] = x; });
+            links = json.links.map(function(x) {
+                linkedByIndex[x.source.index + "," + x.target.index] = 1;
+                return {
+                    source: nodeMap[x.source],
+                    target: nodeMap[x.target],
+                    color: x.color,
+                };
+            });*/
+
+            draw();
+        };
+        previous = current;
+        
+    });
+//         }
+//     });
+// },1000);
+
+//Looks up whether a pair of nodes are neighbours.
+function neighboring(a, b) {
+    return linkedByIndex[a.index + "," + b.index];
+}
+
+function connectedNodes() {
+    if (toggle == 0) {
+        //Reduce the opacity of all but the neighbouring nodes to 0.3.
+        var d = d3.select(this).node().__data__;
+        node.style("opacity", function (o) {
+            return neighboring(d, o) | neighboring(o, d) ? 1 : 0.3;
+        });
+        //Reduce the opacity of all but the neighbouring edges to 0.8.
+        link.style("opacity", function (o) {
+            return d.index==o.source.index | d.index==o.target.index ? 1 : 0.8;
+        });
+        //Increases the stroke width of the neighbouring edges.
+        link.style("stroke-width", function (o) {
+            return d.index==o.source.index | d.index==o.target.index ? 3 : 0.8;
+        });
+        // d3.select(this).append("circle")
+        // .attr({"r": 5,
+        // "opacity": 0.4,
+        // "stroke-width":0.2,
+        // "class": "outer",
+        // "fill-opacity":0.1,
+        // "fill": function(d){return d.color;},
+        // "stroke": function(d){return d.color;},
+        // "title": function(d){return d.id;}})
+        // .call(force.drag()
+        // .on("dragstart", dragstart)
+        // .on("drag", dragmove)
+        // .on("dragend", dragend))
+        // .on({"mouseover": function(d) {
+        //         d3.select(this).style("cursor", "pointer");
+        //         d3.select(this).append("title").text(d.id);
+        //     },
+        //     "mouseout": function(d) {
+        //         d3.select(this).style("cursor", "default");
+        //         d3.select(this).selectAll("*").remove();
+        //     },
+        //     "click": connectedNodes
+        // })   
+        // .transition().attr("r", function(d){return d.range});
+        //Reset the toggle.
+        toggle = 1;
+    } else {
+        //Restore everything back to normal
+        node.style("opacity", 1);
+        link.style("opacity", 1);
+        link.style("stroke-width", 1);
+        d3.selectAll("circle.outer").remove();
+        toggle = 0;
+    }
+}
+
+function draw()
+{
+    d3.selectAll('text').remove();
+    d3.selectAll('circle').remove();
+    d3.selectAll('line').remove();
+    
+    node = vis.selectAll(".node").data(nodes);
+    
+    node.enter().append("text").attr({
+        "class": "node-label",
+        'dx': d => d.pos[0],
+        'dy': d => d.pos[1]-8,
+        'font-size': 12,
+        "text-anchor": "middle"
+        }).text(d => d.id);
+    node.enter().append("circle")
+        .attr({"r": 7,
+        "opacity": 1, //0.8
+        "stroke-width":0.2,
+        "class": "node",
+        "fill-opacity":1, //0.6
+        "fill": d => d.color,
+        "stroke": d => d.color,
+        "title": d => d.id})
+        .call(force.drag()
+        .on("dragstart", dragstart)
+        .on("drag", dragmove)
+        .on("dragend", dragend))
+        .on({"mouseover": function(d) {
+                d3.select(this).style("cursor", "pointer");
+                d3.select(this).append("title").text(d.id);
+                d3.select(this.parentNode).insert("circle",":first-child")
+                    .attr({"r": 5,
+                    "opacity": 0.4,
+                    "stroke-width":0.2,
+                    "class": "outer",
+                    "fill-opacity":0.4,
+                    "fill": d.color,
+                    "stroke": d.color,
+                    "title": d.id,
+                    "cx": d.pos[0],
+                    "cy": d.pos[1]})
+                    .transition().attr("r", d.antrange);
+            },
+            "mouseout": function(d) {
+                d3.select(this).style("cursor", "default");
+                d3.select(this).selectAll("*").remove();
+                d3.select(this.parentNode).selectAll("circle.outer").remove()
+                // d3.selectAll("circle.outer").remove();
+            },
+            "click": connectedNodes
+        });
+        // .transition().ease("linear")
+        // .transition().attr("r", function(d){return d.range})
+        // .transition().attr("opacity", 0)
+
+        
+    // node.enter().append("title")
+    //     .text(function(d) { return d.id; });
+    // node.on('click', connectedNodes);
+    // node.exit().remove();
+    
+    node.exit().remove();
+
+    link = vis.selectAll(".link").data(links);
+    // link = link.data([{'source': {'index':'1.0.2', 'pos': [781, 581]}, 'target': {'index': '1.0.0', 'pos': [737, 558]}, 'color': 'orange'}]);
+    link.enter().insert("line",":first-child").attr({
+        "stroke-width": function(d){return (d.color == 'black') ? 0.8 : 3 ;}, // d.weight
+        "class": "link",//function (d) { return (d.color = 'red') ? "link_dashed" : "link_continuous" ; },
+        'stroke': function(d){return d.color;},
+        // "stroke-dasharray": function(d) {return (d.color == 'green') ? "1,0" : "8,8"; }});
+        "stroke-dasharray": function(d) {return (d.color == 'black') ? "3,9" : "1,0"; }});
+    link.exit().remove();
+    force.start();
+};
+
+function dragstart(d, i) {
+    force.stop() // stops the force auto positioning before you start dragging
+};
+
+function dragmove(d, i) {        
+    d.px += d3.event.dx;
+    d.py += d3.event.dy;
+    d.x += d3.event.dx;
+    d.y += d3.event.dy; 
+
+    tick(); // this is the key to make it work together with updating both px,py,x,y on d !
+};
+
+function dragend(d, i) {
+    d.fixed = true; // of course set the node to fixed so the force doesn't include the node in its auto positioning stuff        
+    // socket.emit('updatepos', {id:d.id, x:Math.round(d.x-150), y:Math.round(d.y-100)});
+    // console.log({data: [dx, dy]})
+    tick();
+    force.resume();
+};
+
+function rescale() {
+    scale=d3.event.scale;
+    vis.attr("transform",
+    " scale(" + scale + ")"
+    + " translate(" + currtrans[0] + "," + currtrans[1] + ")");
+    currscale = scale;
+}; 
+
+function retrans() {
+    trans=d3.event.translate;
+    this.x = this.x || 0;//reset if not there
+    this.y = this.y || 0;
+    
+    this.x += d3.event.dx;
+    this.y += d3.event.dy;
+    // console.log(currscale);
+    // console.log(this.x + " " + this.y);
+    vis.attr("transform",
+    " scale(" + currscale + ")"
+    + " translate(" + this.x + "," + this.y + ")");   
+    currtrans = [this.x, this.y];
+}; 
+
+function reloaddata(key) {
+    if (key == "ctrls"){
+        results = [];
+        tmp = {};
+        JSON.parse(sessionStorage.getItem("ctrls"), (key, value) => {  
+            tmp[key] = value
+            if (key == 'port'){
+                results.push(tmp);
+                tmp = {};
+            };
+        });
+        $.each(results, function(i, c){
+            $('#ctrls').append('<li><i class="material-icons left">computer</i></li>');
+            addctrladdr();
+        });
+        return results;
+    };
+    if (key == "configs"){
+        results = {}
+        JSON.parse(sessionStorage.getItem("configs"), (key, value) => {          
+            results[key] = value;
+        });
+        return results;
+    };
+};
+
+$('#addctrlbtn').click( function(e) {
+    addctrl(e);
+});
+    
+$('#raddctrlbtn').click( function(e) {
+    addctrl(e);
+});
+
+function addctrl(e){
+    $('#addctrl').modal('open');
+    $('#port').attr('value', nxt_ctrl_port_count);
+    nxt_ctrl_port_count += 4;
+    $('.center').show();
+    // $('#mask').hide();
+    $('.window').hide();
+    e.preventDefault();
+};
+
+$( "#addctrlform" ).on( "submit", function(e) {        
+    dataString = $(this).serializeArray();
+    json = {};
+    ctrl = {};
+    $.map(dataString, function(n, i){
+        json[n['name']] = n['value'];
+    });       
+    ctrl['ctrltype'] = json.ctrltype;
+    ctrl['ip'] = json.ip;
+    ctrl['port'] = parseInt(json.port);
+    controllers.push(ctrl);
+    sessionStorage.setItem("ctrls", JSON.stringify(controllers));
+    // console.log(ctrl);
+    $('#ctrls').append('<li><i class="material-icons left">computer</i></li>')
+    addctrladdr()
+    e.preventDefault();
+});
+
+function addctrladdr(){        
+    data = controllers;
+    Options="";
+    // $("<option>").attr("value",newValue).text(newValue)
+    $.each(data, function(i, val){ 
+        Options=Options+"<option value='"+val.ip+':'+val.port+"'>"+val.ip+':'+val.port+"</option>";
+    });
+    $('#ctrl').empty();
+    $('#ctrl').append(Options);
+    $("#ctrl").formSelect();
+}; 
+
+    
+$('#settingbtn').click( function(e) {
+    setting(e);
+});
+    
+$('#rsettingbtn').click( function(e) {
+    setting(e);
+});
+
+function setting(e){
+    $('#setting').modal('open');
+    $('.center').show();
+    // $('#mask').hide();
+    $('.window').hide();
+    e.preventDefault();
+};
+
+$( "#settingform" ).on( "submit", function(e) {        
+    dataString = $(this).serializeArray();
+    json = {};
+    config = {};
+    $.map(dataString, function(n, i){
+        json[n['name']] = n['value'];
+    });       
+    settings['ppm'] = json.ppmtype;
+    settings['intftype'] = json.intftype;
+    settings['ftsize'] = json.ftsize;
+    settings['idletimeout'] = json.idletimeout;
+    settings['buffersize'] = json.buffersize;
+    settings['maxdelay'] = json.maxdelay;
+    settings['beaconstti'] = json.beaconstti;
+    settings['reportstti'] = json.reportstti;
+    settings['mxnodes'] = json.mxnodes;
+    settings['gridwidth'] = json.gridwidth;
+    settings['gridheight'] = json.gridheight;
+    settings['randomseed'] = json.randomseed
+    sessionStorage.setItem("configs", JSON.stringify(settings));
+    $('#maingrid').attr('width', json.gridwidth);
+    $('#maingrid').attr('height', json.gridheight);
+    //add other settings
+    // console.log(settings);
+    e.preventDefault();
+});
+
+$('#maingrid').click( function(e) {
+    // e.preventDefault();
+    if(controllers.length == 0){
+        // alert('At least one controller is required!')
+        return;
+    };
+    if(Clock.totalSeconds != 0){
+        return;
+    };
+    if(settings['mxnodes'] < nodeids.length){
+        alert('Number of nodes reached its maximum limit!')
+        return;
+    }
+    scale = 1;
+    if(e.currentTarget.parentElement.getAttribute("transform")){
+        scale = e.currentTarget.parentElement.getAttribute("transform").split('(')[1].split(')')[0];            
+    }
+    let rect = e.target.getBoundingClientRect();
+    // $('#img', svg.root()).attr('transform', 'scale(' + myScale + ')')
+    let x = (e.clientX - rect.left) / scale; //x position within the element.
+    let y = (e.clientY - rect.top) / scale;  //y position within the element.
+    addr = nodeAddr(nxt_node_id_count++);
+    $('#addnode').modal('open');
+    // for(ctrl in controllers){
+    //     $('#ctrl').add(ctrl['ip']+':'+ctrl['port']);
+    // }
+    // <option value="dctrl">Controller-Dijkstra</option>        
+    $('#xpos').attr('value', x);
+    $('#ypos').attr('value', y);
+    $('#zpos').attr('value', 0);
+    $('#addr').attr('value', addr);  
+    $('.center').show();
+    // $('#mask').hide();
+    $('.window').hide();
+    e.preventDefault();
+});    
+
+//TODO
+$('#issink').on('click', function(e){
+    // console.log('issink clicked');
+    // if($(this).attr('checked')){
+    //     $('#ctrl').removeAttr("disabled");
+    //     $('#ctrl').formSelect();
+    // };
+});
+
+$( "#addnodeform" ).on( "submit", function(e) {
+    dataString = $(this).serializeArray();
+    json = {};
+    nd = {};
+    $.map(dataString, function(n, i){
+        json[n['name']] = n['value'];
+    });
+    
+    // var cls = d3.select(this).attr('class');
+    // lert(dataString); return false;
+    id = json.net + '.' + json.addr;
+    nodeids.push(id);
+    nd['datatype'] = json.datatype;
+    nd['addr'] = json.addr;
+    nd['ctrl'] = json.ctrl;
+    nd['intftype'] = settings['intftype'];
+    nd['antrange'] = 0;
+    nd['denisty'] = 0;
+    if(json.issink){nd['batt'] = 9000000}else{nd['batt'] = parseInt(json.batt)};
+    if(json.issink){nd['color'] ='red'}else{nd['color'] ='blue'};
+    if(json.issink){nd['issink'] = true}else{nd['issink'] = false};
+    if(json.issink){nd['distance'] = 0}else{nd['distance'] = 255};
+    nd['id'] = id;
+    // nd['lastupdate'] = 0;
+    // nd['active'] = false;
+    // nd['predicted'] = false;
+    nd['net'] = parseInt(json.net);
+    nd['port'] = nxt_node_port_count++; //may updated later on
+    nd['pos'] = [parseInt(json.x), parseInt(json.y)];
+    nd['x'] = parseInt(json.x);
+    nd['y'] = parseInt(json.y);
+    // nd['weight'] = 0.0;
+    nd['delay'] = 0.0;
+    nd['throughput'] = 0.0;
+    nd['engcons'] = 0.0;
+    nd['alinks'] = 0;
+    nd['flinks'] = 0;
+    nd['txpackets'] = 0;
+    nd['txbytes'] = 0;
+    nd['rxpackets'] = 0;
+    nd['rxbytes'] = 0;
+    nodes.push(nd);
+    // console.log(nodes);
+    
+    draw();
+    
+    // node.enter().insert("circle")
+    //     .attr({"r": 7,
+    //     "opacity": 0.8,
+    //     "stroke-width":0.2,
+    //     "class": "node",
+    //     "fill-opacity":0.6,
+    //     "fill": function(d){return d.color},
+    //     "stroke": function(d){return d.color}})
+    //     .call(force.drag()
+    //     .on("dragstart", dragstart)
+    //     .on("drag", dragmove)
+    //     .on("dragend", dragend))
+    //     .on({"mouseover": function(d) {
+    //         d3.select(this).style("cursor", "pointer"); 
+    //         },
+    //         "mouseout": function(d) {
+    //             d3.select(this).style("cursor", "default"); 
+    //     }})
+    //     // .transition().ease("linear")
+    //     // .transition().attr("r", function(d){return d.range})
+    //     // .transition().attr("opacity", 0)
+
+    // node.append("title")
+    //     .text(function(d) { return d.id; });
+    // node.on('click', connectedNodes);
+    // node.exit().remove();
+    
+    // $.ajax({
+    // type: "POST",
+    // url: "bin/process.php",
+    // data: dataString,
+    // success: function () {
+    //     $("#contact_form").html("<div id='message'></div>");
+    //     $("#message")
+    //     .html("<h2>Contact Form Submitted!</h2>")
+    //     .append("<p>We will be in touch soon.</p>")
+    //     .hide()
+    //     .fadeIn(1500, function () {
+    //         $("#message").append(
+    //         "<img id='checkmark' src='images/check.png' />"
+    //         );
+    //     });
+    // }
+    // });
+
+    e.preventDefault();
+});
+
+function clear(e){
+    d3.values(nodes).forEach(function(aNode){ aNode.linkCount = 0;}); 
+    nodes = [];
+    links = [];
+    nodeids = [];
+    controllers = [];
+    $('#ctrls').empty();
+    nxt_node_id_count = 0;
+    nxt_ctrl_port_count = 0;
+    nxt_node_port_count = 0;
+    settings = {};
+    linkedByIndex = {};
+};
+
+socket.on('sr_loadtopo', function(json, cb) {
+    clear();
+    nodes = json.nodes;
+    links = json.links;
+    nodeids = json.nodeids;
+    controllers = json.controllers;
+    $.each(controllers, function(i, c){
+        $('#ctrls').append('<li><i class="material-icons left">computer</i></li>');
+        addctrladdr();
+    });
+    sessionStorage.setItem("ctrls", JSON.stringify(json.controllers));
+    nxt_node_id_count = json.nxt_node_id_count;
+    nxt_ctrl_port_count = json.nxt_ctrl_port_count;
+    nxt_node_port_count = json.nxt_node_port_count;
+    settings = json.settings;
+    sessionStorage.setItem("configs", JSON.stringify(json.settings));
+    draw();
+});
+
+$( "#startbtn" ).click(function(e) {
+    startsim(e);
+});
+
+$("#rstartbtn").click(function(e){
+    startsim(e);
+});
+
+function startsim(e){
+    console.log('start simulation ...');
+    if(controllers.length == 0){
+        alert('At least one controller is required!');
+        return;
+    }
+    data = {};
+    if (Clock.interval) {
+        Clock.pause();
+        $(this).children().text('play_arrow')
+    } else { 
+        if(Clock.totalSeconds == 0){
+            Clock.start()
+            $(this).children().text('pause');  
+            // //Randomly choose target (destination address) for each node
+            $.each(nodes, function(i, node) {
+                // console.log(node)
+                if(node['color'] != 'red'){
+                    node['target'] = nodeids[generateRandom(nodeids.length, node['port'])];
+                }
+            });
+            data['nodes'] = nodes;
+            data['controllers'] = controllers;
+            data['settings'] = settings;
+            // console.log(data)
+            socket.emit('start', data);
+        }
+        else {
+            Clock.resume();
+            $(this).children().text('pause')
+            socket.emit('resume', nodes);
+        }            
+    }
+    // Clock.start();
+    e.preventDefault();
+};
+
+function generateRandom(len, except) {
+    var num = Math.floor(Math.random() * len);
+    return (num === except) ? generateRandom(len) : num;
+}
+
+$('#resetbtn').click(function(e) {
+    reset(e);
+});
+
+$('#rresetbtn').click(function(e) {
+    reset(e);
+});
+
+function reset(e){
+    socket.emit('reset');
+    location.reload();        
+};
+
+$('#stopbtn').click(function(e){
+    stop(e);
+});
+
+$('#rstopbtn').click(function(e){
+    stop(e);
+});
+
+function stop(e){
+    socket.emit('stop');
+    sessionStorage.clear();
+    location.reload();
+};
+
+$('#uploadbtn').click(function(e){
+    upload(e);
+});
+
+
+$('#ruploadbtn').click(function(e){
+    upload(e);
+});
+
+function upload(e){
+    var fileNames = new Array();
+    $.ajax({
+      url: "/outputs/",
+      success: function(data){
+         $(data).find("td > a").each(function(){
+            if(openFile($(this).attr("href"))){
+                fileNames.push($(this).attr("href"));
+            }           
+         });
+      }
+    }); 
+    console.log(fileNames);
+    function openFile(file) {
+        var extension = file.substr( (file.lastIndexOf('.') +1) );
+        switch(extension) {
+            case 'json':
+                return true;
+            default:
+                return false;
+        }
+    };
+    // $('#uploadfile').modal('open');
+    // $('.center').show();
+    // // $('#mask').hide();
+    // $('.window').hide();
+    socket.emit('loadtopo');
+    // e.preventDefault();
+
+};
+
+$('#fname').change( function(event) {
+    tmppath = URL.createObjectURL(event.target.files[0]);
+});
+
+$( "#uploadform" ).on( "submit", function(e) {
+    //TODO code      
+    console.log(tmppath);
+    console.log($(this).find('input[name="fname"]').val());
+    $.getJSON($(this).find('input[name="fname"]').val(), function(data) {
+        console.log(data.element_key);
+    });
+    // id = json.net + '.' + json.addr;
+    // nodeids.push(id)
+    // node['datatype'] = json.datatype;
+    // node['addr'] = json.addr;
+});
+
+
+$('#savebtn').click(function(e){
+    save(e);
+});
+
+$('#rsavebtn').click(function(e){
+    save(e);
+});
+
+function save(e){
+    //TODO
+
+    if(controllers.length == 0){
+        alert('At least one controller is required!');
+        return;
+    }
+
+    $('#savetopo').modal('open');
+    $('.center').show();
+    // $('#mask').hide();
+    $('.window').hide();
+    e.preventDefault();
+
+    // data = {}
+    // data['nodes'] = nodes;
+    // data['links'] = links;
+    // data['nodeids'] = nodeids;
+    // data['controllers'] = controllers;
+    // data['settings'] = settings;
+    // data['nxt_node_id_count'] = nxt_node_id_count;
+    // data['nxt_ctrl_port_count'] = nxt_ctrl_port_count;
+    // data['nxt_node_port_count'] = nxt_node_port_count;
+
+    // socket.emit('savetopo', data);
+
+    // a = document.createElement('a');
+    // a.setAttribute('href', 'data:text/plain;charset=utf-8,'+encodeURIComponent(JSON.stringify(data)));
+    // a.setAttribute('download', 'topo.json');
+    // a.click()
+    // localStorage.setItem('testObject', JSON.stringify(data));
+    // Retrieve the object from storage
+    // var retrievedObject = localStorage.getItem('testObject');
+
+    // console.log('retrievedObject: ', JSON.parse(retrievedObject));
+    // e.preventDefault();
+};
+
+$( "#savetopoform" ).on( "submit", function(e) {        
+    dataString = $(this).serializeArray();
+    json = {};
+    config = {};
+    $.map(dataString, function(n, i){
+        json[n['name']] = n['value'];
+    }); 
+
+    data = {}
+    data['nodes'] = nodes;
+    data['links'] = links;
+    data['nodeids'] = nodeids;
+    data['controllers'] = controllers;
+    data['settings'] = settings;
+    data['nxt_node_id_count'] = nxt_node_id_count;
+    data['nxt_ctrl_port_count'] = nxt_ctrl_port_count;
+    data['nxt_node_port_count'] = nxt_node_port_count;
+    data['filename'] = json.filename;
+    socket.emit('savetopo', data);
+
+    e.preventDefault();
+});
+
+function tick() {
+
+    // socket.emit('updatepos', {data:d.source})
+    // console.log({data: 'moving'});
+    link.attr("x1", function(d) { return Math.round(d.source.pos[0]); })
+        .attr("y1", function(d) { return Math.round(d.source.pos[1]); })
+        .attr("x2", function(d) { return Math.round(d.target.pos[0]); })
+        .attr("y2", function(d) { return Math.round(d.target.pos[1]); });
+
+    node.attr("cx", function(d) { return Math.round(d.pos[0]); })
+        .attr("cy", function(d) { return Math.round(d.pos[1]); });
+
+};
+
+// function tick() {
+//     link.attr("x1", function(d) { return d.source.x; })
+//         .attr("y1", function(d) { return d.source.y; })
+//         .attr("x2", function(d) { return d.target.x; })
+//         .attr("y2", function(d) { return d.target.y; });
+
+//   node.attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; });
+// };
+
+function nodeAddr( i){
+    prefixLen = 4;
+    baseNum = 0x0001;
+    imax = 0xffff >> prefixLen;
+    assert(i <= imax);
+    mask = 0xffff ^ imax
+    addr = ( baseNum & mask ) + i
+    w = ( addr >> 8 ) & 0xff
+    x = addr & 0xff
+    return w+'.'+x
+};
+
+function assert(condition, message) {
+    if (!condition) {
+        throw message || "Assertion failed";
+    }
+};
+
+</script>
+  </body>
+  </html>

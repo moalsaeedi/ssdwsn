@@ -1,0 +1,64 @@
+{
+  "topo": {
+    "timeout": 30,
+    "rssi_resolution": 20,
+    "ctrls": [
+      {
+        "type": "dctrl",
+        "ip": "127.0.0.1",
+        "port": 9990
+      },
+      {
+        "type": "dctrl",
+        "ip": "127.0.0.1",
+        "port": 9991
+      }
+    ],
+    "sinks": [
+      {
+        "pos": "100,50,0",
+        "ctrl": [
+          "127.0.0.1",
+          9990
+        ]
+      },
+      {
+        "pos": "150,100,0",
+        "ctrl": [
+          "127.0.0.1",
+          9991
+        ]
+      }
+    ],
+    "motes": [
+      {
+        "pos": "100,250,0"
+      },
+      {
+        "pos": "250,150,0"
+      },
+      {
+        "pos": "150,40,40"
+      },
+      {
+        "pos": "10,80,30"
+      },
+      {
+        "pos": "60,120,50"
+      }
+    ]
+  },
+  "stats": {
+    "NEXT_CTRL_PORT_C": 0,
+    "NEXT_CTRL_PUB_PORT_C": 2,
+    "NEXT_CTRL_SUB_PORT_C": 2,
+    "NEXT_SINK_PORT_C": 2,
+    "NEXT_MOTE_PORT_C": 5,
+    "NEXT_SINK_ADDR_C": 2,
+    "NEXT_MOTE_ADDR_C": 5,
+    "NEXT_DPID_C": 2,
+    "NEXT_MAC_C": 2,
+    "NEXT_SINK_POS_C": 0,
+    "NEXT_MOTE_POS_C": 0
+  }
+}
