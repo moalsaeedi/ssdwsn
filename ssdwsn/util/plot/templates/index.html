@@ -28,7 +28,7 @@
         <!-- <li><a id="resetbtn">RESET<i class="material-icons right">replay</i></a></li> -->
         <li><a id="stopbtn">STOP<i class="material-icons right">stop</i></a></li>
         <li><a id="savebtn">SAVE<i class="material-icons right">save</i></a></li>
-        <li><a id="uploadbtn">RELOAD<i class="material-icons right">input</i></a></li>
+        <li><a id="openbtn">OPEN<i class="material-icons right">input</i></a></li>
         <li><a id="settingbtn">SETTINGS<i class="material-icons right">settings</i></a></li>
       </ul>
     </div>
@@ -40,7 +40,7 @@
     <!-- <li><a id="resetbtn">RESET<i class="material-icons right">replay</i></a></li> -->
     <li><a id="rstopbtn">STOP<i class="material-icons right">stop</i></a></li>
     <li><a id="rsavebtn">SAVE<i class="material-icons right">save</i></a></li>
-    <li><a id="ruploadbtn">RELOAD<i class="material-icons right">input</i></a></li>
+    <li><a id="ropenbtn">OPEN<i class="material-icons right">input</i></a></li>
     <li><a id="rsettingbtn">SETTING<i class="material-icons right">settings</i></a></li>
   </ul>
       <!-- Modal Add Node -->
@@ -218,7 +218,7 @@
       <form id="savetopoform" action="#" method="post">
     <div class="row">
         <div class="input-field col s12">
-            <input name="filename" id="filename" type="text" class="validate" editable="true" value="topo">
+            <input name="savefilename" id="savefilename" type="text" class="validate" editable="true" value="topo">
         </div>
         <div class="input-field col s12">
          <button type="submit" class="modal-action modal-close waves-effect waves-light btn">SAVE</button>
@@ -231,22 +231,21 @@
   </div>
   </div>
   </div>
-<!-- Modal Upload File -->
-<div id="uploadfile" class="modal">
+<!-- Modal Open File -->
+<div id="openfile" class="modal">
     <div class="modal-content">
     <h5>OPEN ssdwsn PROJECT</h5>
     <div class="col s6">
-<form id="uploadform" action="#" >
+<form id="openform" action="#" method="post">
     <div class="file-field input-field">
-      <div class="btn">
-        <span>File</span>
-        <input type="file" accept=".json">
-      </div>
-      <div class="file-path-wrapper">
-        <input id="fname" name="fname" class="file-path validate" type="text">
-      </div>
+        <div class="input-field col s6">
+            <select id="openfilename" name="openfilename">
+              <!-- <option value="" disabled selected>Choose your option</option> -->
+              <!-- <option value="topofn">topo</option> -->
+            </select>
+          </div>
       <div class="input-field col s12">
-       <button type="submit" class="modal-action modal-close waves-effect waves-light btn">UPLOAD</button>
+       <button type="submit" class="modal-action modal-close waves-effect waves-light btn">OPEN</button>
      </div>  
     </div>
   </form>
@@ -292,6 +291,7 @@ var nxt_ctrl_port_count = "nxt_ctrl" in sessionStorage ? reloaddata("nxt_ctrlpor
 var nxt_node_port_count = "nxt_port" in sessionStorage ? reloaddata("nxt_nodeport") : 0;
 var controllers = "ctrls" in sessionStorage ? reloaddata("ctrls") : [];
 var settings = "configs" in sessionStorage ? reloaddata("configs") : {};
+var topofilename = "topofilename" in sessionStorage ? reloaddata("topofilename") : '';
 var nodeids = [];
 var packetin = 0;
 var packetout = 0;
@@ -1242,16 +1242,16 @@ function clear(e){
     linkedByIndex = {};
 };
 
-socket.on('sr_loadtopo', function(json, cb) {
+socket.on('sr_opentopo', function(json, cb) {
     clear();
     nodes = json.nodes;
     links = json.links;
     nodeids = json.nodeids;
-    controllers = json.controllers;
-    $.each(controllers, function(i, c){
+    $.each(json.controllers, function(i, c){
         $('#ctrls').append('<li><i class="material-icons left">computer</i></li>');
         addctrladdr();
     });
+    controllers = json.controllers;
     sessionStorage.setItem("ctrls", JSON.stringify(json.controllers));
     nxt_node_id_count = json.nxt_node_id_count;
     nxt_ctrl_port_count = json.nxt_ctrl_port_count;
@@ -1275,6 +1275,12 @@ function startsim(e){
         alert('At least one controller is required!');
         return;
     }
+    if(topofilename == ''){
+        save(e);
+        if(topofilename == ''){
+            return;
+        };
+    };
     data = {};
     if (Clock.interval) {
         Clock.pause();
@@ -1293,6 +1299,7 @@ function startsim(e){
             data['nodes'] = nodes;
             data['controllers'] = controllers;
             data['settings'] = settings;
+            data['topofilename'] = topofilename;
             // console.log(data)
             socket.emit('start', data);
         }
@@ -1338,63 +1345,57 @@ function stop(e){
     location.reload();
 };
 
-$('#uploadbtn').click(function(e){
-    upload(e);
+$('#openbtn').click(function(e){
+    open(e);
 });
 
 
-$('#ruploadbtn').click(function(e){
-    upload(e);
+$('#ropenbtn').click(function(e){
+    open(e);
 });
 
-function upload(e){
-    var fileNames = new Array();
-    $.ajax({
-      url: "/outputs/",
-      success: function(data){
-         $(data).find("td > a").each(function(){
-            if(openFile($(this).attr("href"))){
-                fileNames.push($(this).attr("href"));
-            }           
-         });
-      }
-    }); 
-    console.log(fileNames);
-    function openFile(file) {
-        var extension = file.substr( (file.lastIndexOf('.') +1) );
-        switch(extension) {
-            case 'json':
-                return true;
-            default:
-                return false;
-        }
-    };
-    // $('#uploadfile').modal('open');
-    // $('.center').show();
-    // // $('#mask').hide();
-    // $('.window').hide();
-    socket.emit('loadtopo');
+function open(e){
+    socket.emit('gettopofiles');
     // e.preventDefault();
-
 };
 
-$('#fname').change( function(event) {
-    tmppath = URL.createObjectURL(event.target.files[0]);
+socket.on('sr_gettopofiles', function(json, cb) {
+    var Options="";
+    for(key in json){
+        Options=Options+"<option value="+json[key]+">"+json[key]+"</option>";
+    };
+    $('#openfilename').empty();
+    $('#openfilename').append(Options);
+    $("#openfilename").formSelect();
+
+    $('#openfile').modal('open');
+    $('.center').show();
+    // $('#mask').hide();
+    $('.window').hide();
 });
 
-$( "#uploadform" ).on( "submit", function(e) {
-    //TODO code      
-    console.log(tmppath);
-    console.log($(this).find('input[name="fname"]').val());
-    $.getJSON($(this).find('input[name="fname"]').val(), function(data) {
-        console.log(data.element_key);
-    });
+$( "#openform" ).on( "submit", function(e) {   
+    data = {}
+    dataString = $(this).serializeArray();
+    json = {};
+    config = {};
+    $.map(dataString, function(n, i){
+        json[n['name']] = n['value'];
+    });   
+    topofilename = json.openfilename;
+    sessionStorage.setItem("topofilename", JSON.stringify(json.openfilename));
+    data['openfilename'] = json.openfilename
+    socket.emit('opentopo', data);
+    e.preventDefault();
     // id = json.net + '.' + json.addr;
     // nodeids.push(id)
     // node['datatype'] = json.datatype;
     // node['addr'] = json.addr;
 });
 
+$('#fname').change( function(event) {
+    tmppath = URL.createObjectURL(event.target.files[0]);
+});
 
 $('#savebtn').click(function(e){
     save(e);
@@ -1459,7 +1460,9 @@ $( "#savetopoform" ).on( "submit", function(e) {
     data['nxt_node_id_count'] = nxt_node_id_count;
     data['nxt_ctrl_port_count'] = nxt_ctrl_port_count;
     data['nxt_node_port_count'] = nxt_node_port_count;
-    data['filename'] = json.filename;
+    data['savefilename'] = json.savefilename;
+    topofilename = json.savefilename;
+    sessionStorage.setItem("topofilename", JSON.stringify(json.savefilename));
     socket.emit('savetopo', data);
 
     e.preventDefault();
