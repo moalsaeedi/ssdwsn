@@ -508,7 +508,7 @@ def run_loop_in_process(nodetype, node, settings, topofilename, networkGraph=Non
                 mote = Mote(net=node['net'], addr=Addr(node['addr']), portSeq=node['port'], batt=node['batt'], pos=node_pos, target=target, \
                     topo=topofilename, ctrl=(node["ctrl"].split(':')[0], ct.BASE_CTRL_PORT+int(node["ctrl"].split(':')[1])), cls=SENSORS[node['datatype']] )
                 mote.wintf = customClass(INTFS, node['intftype'])(mote.id, mote.ip, port=ct.BASE_NODE_PORT+node['port'], mac=new_mac)
-
+                logger.info(mote.wintf)
                 # system("wpan-hwsim add >/dev/null 2>&1")
                 mote.ppm = customClass(PPMS, settings['ppm'])() 
                 RUNNING_PS.append(getpid())
@@ -521,6 +521,7 @@ def run_loop_in_process(nodetype, node, settings, topofilename, networkGraph=Non
                 sink = Sink(net=node['net'], addr=Addr(node['addr']), portSeq=node['port'], dpid=new_sink_dpid, pos=node_pos, \
                     topo=topofilename, ctrl=(node["ctrl"].split(':')[0], ct.BASE_CTRL_PORT+int(node["ctrl"].split(':')[1])))
                 sink.wintf = customClass(INTFS, node['intftype'])(sink.id, sink.ip, port=ct.BASE_NODE_PORT+node['port'], mac=new_mac)
+                logger.info(sink.wintf)
                 sink.ppm = customClass(PPMS, settings['ppm'])()   
     
                 # system("wpan-hwsim add >/dev/null 2>&1")   

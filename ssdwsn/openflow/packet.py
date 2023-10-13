@@ -100,11 +100,14 @@ class Packet(object):
         return self
 
     def getNet(self):
-        return self.data[ct.NET_INDEX]
+        return ((self.data[ct.NET_INDEX] << 1) & 0x00ff) >> 1
     
     def setNet(self, val):
         self.data[ct.NET_INDEX] = val
         return self
+        
+    def isAcked(self):
+        return bool(self.data[ct.NET_INDEX] >> 7)
         
     def getSrc(self):
         return Addr(self.data[ct.SRC_INDEX:ct.SRC_INDEX + ct.SRC_LEN]) #1
@@ -246,7 +249,7 @@ class Packet(object):
         return copy.deepcopy(self)    
         
     def isssdwsnPacket(self):
-        return self.data[ct.NET_INDEX] < ct.THRES
+        return self.getNet() < ct.THRES
         
 """
 data: can be int[], bytes or object of Packet
@@ -336,7 +339,7 @@ class BeaconPacket(Packet):
     def setBattery(self, val:int):
         self.setPayloadFromTo(bitsToBytes('{0:b}'.format(val).zfill(8*ct.BATT_LEN)), 0, ct.BATT_INDEX, ct.BATT_LEN)
         return self
-
+    
     def hasAggrConfPayload(self):
         return bool(self.getPayloadSize() > ct.BEACON_HDR_LEN)
 

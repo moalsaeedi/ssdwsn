@@ -31,6 +31,7 @@ import aiofiles
 from numpy import append
 from ssdwsn.data.battery import Dischargable, Chargable
 import socket
+import netifaces as ni
 import json
 import asyncio, logging
 from ssdwsn.data.addr import Addr
@@ -252,6 +253,7 @@ class Node:
         # 3) Initialize OF protocol configuration and per-node specific parameters----------------------------
         await self.initssdwsn()  
         await self.initNeighborTable()
+        await asyncio.sleep(10)
         # 4) Run async workers--------------------------------------------------------------------------------
         # ASYNCHRONOUS WORKERS: Create asynchronous workers to handle network flow
         tasks = []
@@ -312,20 +314,22 @@ class Node:
                     tmpDst = packet.getDst()
                     tmpId = f'{packet.getNet()}.{tmpNxtHop}'
                     srcid = f'{packet.getNet()}.{packet.getSrc()}'
+                    # logger.error(f'txhandler {packet.getNet()} {packet.isAcked()} from {packet.getSrc()} to {tmpId}')
                     if tmpDst.isBroadcast() or tmpNxtHop.isBroadcast():
-                        for key in self.neighborTable:
+                        for key, val in self.neighborTable.items():
                             packet.setPrh(self.myAddress)
                             lip6 = check_output(f"ip addr show dev 6lowpan-{str(key)} | grep -B 1 inet6 | sed -ne 's/inet6\([^ ]*\)/\1/p'", shell=True, text=True).strip().split(" ")
                             ((*_, sockaddr),) = socket.getaddrinfo(
                                 # self.getIP6FromSeq(self.neighborTable[key].getPort()).split('/')[0]+'%'+str(socket.if_nametoindex('6lowpan-'+str(key))),
-                                'ff02::1%'+str(socket.if_nametoindex('6lowpan-'+str(key))),
+                                # 'ff02::1%'+str(socket.if_nametoindex('6lowpan-'+str(key))),
+                                ni.ifaddresses('6lowpan-'+str(key))[socket.AF_INET6][0]['addr'],
                                 # 'ff02::1',
                                 # '::1%'+str(socket.if_nametoindex('6lowpan-'+str(key))),
                                 # lip6[1].split('/')[0]+'%'+str(socket.if_nametoindex('6lowpan-'+str(key))),
-                                self.neighborTable[key].getPort(),
+                                val.getPort(),
                                 socket.AF_INET6,
                                 socket.SOCK_DGRAM,
-                                0
+                                0, socket.AI_PASSIVE
                             )
                             # print(sockaddr)    
                             if srcid == self.id:
@@ -340,7 +344,7 @@ class Node:
                                 packet.setTS(round(src_ts + (round(time.time(), 4) - self.ts_dict[src_ts]), 4))
                                 self.ts_dict.pop(src_ts)
 
-                            time.sleep(self.neighborTable[key].getDist()/1e+8) # propagation Time = distance/speed_of_light
+                            time.sleep(val.getDist()/1e+8) # propagation Time = distance/speed_of_light
                             time.sleep((len(packet.toByteArray())*0.001*8)/(self.wintf.params['bandwidth'])) # Transmission Time = packet_len/network_bandwidth (250kbit/s)
                             #Queuing Time + Processing Time (simulation process)
                             # time.sleep(0.015) # Fixed Additional Delay
@@ -357,19 +361,23 @@ class Node:
                             await self.updateStats('tx', packet)
                             logger.info(f'{self.id}-----> Sends Packet type ({packet.getTypeName()}) | {packet.getSrc()} --> {packet.getDst()} - Next Hop({packet.getNxh()})')
                     elif tmpId in self.neighborTable:
+                        # if packet.getType() == ct.BEACON:
+                            # logger.error(f'Packet type ({packet.getTypeName()}) {packet.getSrc()} --> {packet.getDst()} - Next Hop({packet.getNxh()}) {tmpId} is in {self.id} neigbor list')
                         packet.setPrh(self.myAddress)
                         lip6 = check_output(f"ip addr show dev 6lowpan-{str(tmpId)} | grep -B 1 inet6 | sed -ne 's/inet6\([^ ]*\)/\1/p'", shell=True, text=True).strip().split(" ")
                         ((*_, sockaddr),) = socket.getaddrinfo(
                             # self.getIP6FromSeq(self.neighborTable[tmpId].getPort()).split('/')[0]+'%'+str(socket.if_nametoindex('6lowpan-'+str(tmpId))),
-                            'ff02::1%'+str(socket.if_nametoindex('6lowpan-'+str(tmpId))),
+                            # 'ff02::1%'+str(socket.if_nametoindex('6lowpan-'+str(tmpId))),
+                            ni.ifaddresses('6lowpan-'+str(tmpId))[socket.AF_INET6][0]['addr'],
                             # 'ff02::1',
                             # '::1%'+str(socket.if_nametoindex('6lowpan-'+str(tmpId))),
                             # lip6[1].split('/')[0]+'%'+str(socket.if_nametoindex('6lowpan-'+str(tmpId))),
                             self.neighborTable[tmpId].getPort(),
                             socket.AF_INET6,
                             socket.SOCK_DGRAM,
-                            0
+                            0, socket.AI_PASSIVE
                         )
+                        logger.error(ni.ifaddresses('6lowpan-'+str(tmpId))[socket.AF_INET6])
                         # if src node set the sending timestamp
                         if srcid == self.id:
                             packet.setTS(round(time.time(), 4))
@@ -511,23 +519,24 @@ class Node:
     def beaconWorker(self):
         """worker to schedual sending beacons to neighbors (triggered from the sink node)
         """        
-        async def async_thread():  
-            await asyncio.sleep(10)
+        async def async_thread():
             while self.ready:
-                stts = time.time()                
+                stts = time.time()
                 await asyncio.sleep(self.betti['value']/ct.MILLIS_IN_SECOND)
                 if self.isActive and self.sinkDistance < ct.DIST_MAX + 1:
-                    for key, val in self.neighborTable.copy().items():
+                    for key, val in self.neighborTable.items():
                         if val.getToSinkDist() > self.sinkDistance+1:
-                            self.nonacks[self.id+'-'+key] = [time.time(), Addr(re.sub(r'^.*?.', '', key)[1:])]
-                            await self.sendBeacon(Addr(re.sub(r'^.*?.', '', key)[1:]))                
+                            # logger.error(f'ID:{self.id} Dist: {self.sinkDistance} key:{key} NeighborDist: {val.getToSinkDist()}')
+                            await self.sendBeacon(acked=False, dst=Addr(re.sub(r'^.*?.', '', key)[1:]))
+                            # logger.error(f'ID: {self.id} Send: False to {key}')
                     await self.updateLinkColor()
                 if self.isActive and self.aggrDistance < ct.DIST_AGGR_MAX + 1:
-                    for key, val in self.neighborTable.copy().items():
+                    for key, val in self.neighborTable.items():
                         if val.getToAggrDist() > self.aggrDistance+1 and val.getToSinkDist() > self.aggrDistance+1:
-                            self.nonacks[self.id+'-'+key] = [time.time(), Addr(re.sub(r'^.*?.', '', key)[1:])]
-                            await self.sendBeacon(Addr(re.sub(r'^.*?.', '', key)[1:]))                
+                            await self.sendBeacon(acked=False, dst=Addr(re.sub(r'^.*?.', '', key)[1:]))
                     await self.updateLinkColor()
+                # for key, val in self.neighborTable.items():
+                    # logger.error(f'ID: {self.id} Neighbor: {key} {val}')
                 await asyncio.sleep((ct.MAX_BE_TTI - self.betti['value'])/ct.MILLIS_IN_SECOND)
                 logger.info(f'beaconWorker takes: {time.time() - stts}')
             # while self.ready:
@@ -540,14 +549,16 @@ class Node:
         """worker to schedual sending reports to the controller
         """    
         async def async_thread(): 
-            await asyncio.sleep(30)     
             while self.ready:
                 stts = time.time()
                 await asyncio.sleep(self.rptti['value']/ct.MILLIS_IN_SECOND)
                 if self.isActive and self.sinkDistance < ct.DIST_MAX+1:
                     packet = await self.createReportPacket()
-                    # self.rxQueue.put_nowait((packet, self.sinkDistance, ct.RSSI_MAX))
-                    await self.runFlowMatch(packet)
+                    if self.isSink:
+                        await self.controllerTx(packet)
+                    else:
+                        # self.rxQueue.put_nowait((packet, self.sinkDistance, ct.RSSI_MAX))
+                        await self.runFlowMatch(packet)
                 await asyncio.sleep((ct.MAX_RP_TTI - self.rptti['value'])/ct.MILLIS_IN_SECOND)
                 logger.info(f'reportWorker takes: {time.time() - stts}')
         asyncio.run(async_thread())    
@@ -902,18 +913,19 @@ class Node:
         rhs = await self.getOperand(packet, size, window.getRhsOperandType(), window.getRhs())
         return compare(operator, lhs, rhs)
 
-    async def createBeaconPacket(self, dst:Addr=None):
+    async def createBeaconPacket(self, acked, dst):
         """Create a Beacon Packet (needed for discovery process)"""
         # logger.info(f'aggrDistance: {self.aggrDistance}****isAggrHead***{self.isAggrHead}*************isAggrMemb******{self.isAggrMemb}****************************')
         aggrdist = int.to_bytes(self.aggrDistance, 1, 'big', signed=False) # aggr distance
         aggrdst = self.aggrAddress.getArray() # aggr destination
         aggrpayload = bytearray(aggrdist+aggrdst) # aggr beacon's payload
-        p = BeaconPacket(net=self.myNet, src=self.myAddress, dst=self.sinkAddress, distance=self.sinkDistance, battery=self.battery.getLevel(), 
+        p = BeaconPacket(net=self.myNet + (int(acked)*128), src=self.myAddress, dst=self.myAddress, distance=self.sinkDistance, battery=self.battery.getLevel(), 
             pos=self.position, intfType=await self.getIntfType(), sensorType=await self.getSensorType(), port=self.wintf.port-ct.BASE_NODE_PORT, aggrpayload=aggrpayload)
         if dst:
             p.setNxh(dst)
         else:
             p.setNxh(Addr(ct.BROADCAST_ADDR))
+        # logger.error(f'net:{p.getNet()} acked:{p.isAcked()} from {p.getSrc().__str__()} to {p.getNxh().__str__()}')
         # self.prv_loc = 'createBeaconPacket'
         # if p.getSrc().__str__() == '0.75':
         #     ts2 = time.time()
@@ -931,10 +943,12 @@ class Node:
         # logger.error(' '.join(format(i, '08b') for i in p.getPayload()))
         return p
     
-    async def sendBeacon(self, dst:Addr=None):
+    async def sendBeacon(self, acked:bool, dst:Addr=None):
         # if self.sinkDistance < ct.DIST_MAX + 1:
-        packet = await self.createBeaconPacket(dst)
+        packet = await self.createBeaconPacket(acked, dst)
+        # logger.error(f'{acked} beacon created from {packet.getSrc()} to {packet.getNxh()}')
         await self.txpacket(packet)
+        # logger.error(f'{acked} beacon sent from {packet.getSrc()} to {packet.getNxh()}')
         await self.updateStats('beacon', packet)
     
     async def runAction(self, action, packet):
@@ -1173,7 +1187,6 @@ class Node:
                 self.aggrAddress = self.myAddress
             # self.stvipub.send(b'ST'+b'NODE'+str(json.dumps({'id':self.id, 'color':'orange' if isAggrHead else 'blue'})).encode('utf-8'))            
             self.stats.extend(b'ST'+b'NODE'+str(json.dumps({'id':self.id, 'color':'orange' if isAggrHead else 'blue'})).encode('utf-8')+b';')
-            await self.sendBeacon()
                 
     async def execReadConfig(self, packet:ConfigPacket):
         """Execute the payload of a Read Configuration Packet"""
@@ -1220,36 +1233,34 @@ class Node:
         Args:
             packet (_type_): unknown packet (search for a matching forwarding rule)
         """
-        matched = False
         matches = []
         key = 'src:'+str(packet.getSrc().intValue())+'dst:'+str(packet.getDst().intValue())+'typ:'+str(packet.getType())
         matches = self.flowTable.get_matching(key)
+        print(f'key:{key}')
+        print(f'matches:{matches}')
         if matches:
             # get the most specific matched entry (rule)
             max_key = max(matches, key=len)
             entry = matches[max_key]
             # if self.matchRule(entry, packet):
-            matched = True
             for action in entry.getActions():
                 await self.runAction(action, packet)
             entry.getStats().restoreIdle()
             entry.getStats().increasePCounter()
             entry.getStats().increaseBCounter(len(packet.toByteArray()))
             logger.info(f'{self.id} MATCHED rule ({entry}) entry_key({max_key}) for {packet.getTypeName()} Packet')           
-            return matched
         # if not matched, forward the unknown packet to the controller
-        if not matched:
+        if not matches:
             rps = RequestPacket.createReqPacket(self.myNet, self.myAddress, self.sinkAddress, self.requestId+ 1, packet.toByteArray())
             for rp in rps:
                 # self.rxQueue.put_nowait(rps, self.sinkDistance, ct.RSSI_MAX)
                 await self.runFlowMatch(rp)
-            return matched
 
     def remvExpiredEnties(self, span_time):
         """update the flow table. Remove entries with expired idle-timeout.
         """
         remvList = []
-        for item, value in self.flowTable.copy().items():
+        for item, value in self.flowTable.items():
             idletimeout = value.getStats().getIdle()
             if idletimeout != ct.RL_IDLE_PERM:
                 if idletimeout >= 1:
@@ -1273,7 +1284,7 @@ class Node:
             aggr_target = str(self.myNet)+'.'+(await self.getNextHopVsAggr()).__str__()
             # if sink_target:
             forward_nodes = []
-            for key, entry in self.flowTable.copy().items():
+            for key, entry in self.flowTable.items():
                 for action in entry.getActions():
                     if action.getTypeName() == 'FORWARD_U':
                         forward_nodes.append(str(self.myNet)+'.'+action.getNextHop().__str__())
@@ -1402,12 +1413,14 @@ class Node:
         """
         if rssi >= ct.RSSI_MIN:
             tosink_dist = packet.getDistance()
-            toaggr_dist = ct.DIST_AGGR_MAX + 1
+            toaggr_dist = packet.getAggrConfig().get('dist')
             if tosink_dist+1 < self.sinkDistance: #(tosink_dist < self.sinkDistance) dynamic to sink link
                 # advertisment from node to sink
                 prvNxtHop = await self.getNextHopVsSink()
                 self.sinkAddress = packet.getDst()
                 self.isActive = True
+                self.sinkDistance = tosink_dist+1   
+                self.sinkRssi = rssi         
                 toSink = Entry()
                 # toSink.addWindow(Window().setOperator(ct.EQUAL).setSize(ct.W_SIZE_1)
                 #     .setLhsOperandType(ct.PACKET).setLhs(ct.DST_INDEX).setRhsOperandType(ct.CONST)
@@ -1416,8 +1429,6 @@ class Node:
                 toSink.addAction(ForwardUnicastAction(nxtHop=packet.getSrc()))
                 toSink.getStats().setTtl(int(time.time()))
                 toSink.getStats().setPermanent() #added    
-                self.sinkDistance = tosink_dist+1   
-                self.sinkRssi = rssi         
                 await self.insertRule(toSink)
 
                 # if prvNxtHop:
@@ -1429,9 +1440,8 @@ class Node:
                 #     asyncio.create_task(self.emitStats('linkcolor', data={'id':source, 'links':links}))#TODO
             if tosink_dist+1 != self.sinkDistance and packet.getSrc().__eq__(await self.getNextHopVsSink()):
                 # update distance to sink in case the route to sink is updated
-                self.sinkDistance = tosink_dist + 1            
+                self.sinkDistance = tosink_dist + 1
             if self.isActive:
-                toaggr_dist = packet.getAggrConfig().get('dist')
                 if toaggr_dist+1 < self.aggrDistance and toaggr_dist+1 < self.sinkDistance:
                 # if toaggr_dist+1 < self.aggrDistance and self.sinkDistance > 1 and toaggr_dist+1 <= ct.AGGR_MAX_LEVEL: # expected distance (received distance + 1 less than current aggr distance and less than or equal the max aggr configured level and curr sink distance greater than 1)
                 # if toaggr_dist+1 < self.aggrDistance and self.sinkDistance > 1: 
@@ -1455,21 +1465,25 @@ class Node:
                     self.aggrDistance = toaggr_dist + 1
                     await self.insertRule(toAggr)
                 if toaggr_dist+1 != self.aggrDistance and packet.getSrc().__eq__(await self.getNextHopVsAggr()):
-                    self.aggrDistance = ct.DIST_AGGR_MAX + 1
                     for key in self.flowTable.get_matching('dst:'+str(self.aggrAddress.intValue())):
                         if key != '.*':
                             # self.flowTable.pop(key)
                             logger.info(f"{self.id} REMOVE rule ({self.flowTable[key]}) at key {key}")
                             del self.flowTable[key]
+                    self.aggrDistance = ct.DIST_AGGR_MAX + 1
                     self.aggrAddress = self.myAddress
             # update neighborTable
             target = f'{packet.getNet()}.{packet.getSrc().__str__()}'
+            # logger.error(f'src: {target} src_dist:{tosink_dist} src_aggr_dist:{toaggr_dist}')
             # self.neighborTable[target] = Neighbor(packet.getSrc(), rssi, packet.getBattery(), packet.getPort(), self.getLinkColor(target))                        
             self.neighborTable[target] = Neighbor(dist, packet.getSrc(), rssi, packet.getPort(), tosink_dist, toaggr_dist)
-            if self.nonacks.get(self.id+'-'+target):
-                self.nonacks.pop(self.id+'-'+target)
-            else:
-                await self.sendBeacon(Addr(re.sub(r'^.*?.', '', target)[1:]))
+            # print(f'src_dist:{self.neighborTable[target].getToSinkDist()}')
+            # logger.error(f'ID: {self.id} Recieved: {packet.isAcked()} from {target}')
+            if not packet.isAcked():
+                # logger.error(f'ID: {self.id} Send: True to {target}')
+                await self.sendBeacon(acked=True, dst=packet.getSrc())
+                # for key, val in self.neighborTable.items():
+                #     logger.error(f'ID: {self.id} has neighbor {key}: {val}')
             await self.updateLinkColor()
 
     async def rxOpenPath(self, packet:OpenPathPacket):
@@ -1978,7 +1992,7 @@ class Mote(Node):
             target (str, optional): for simulation purpose a target destination node is assigned to each node. Defaults to None.
             cls (_type_, optional): sensor device attached to wireless node. Defaults to None.
         """
-        self.id = '%s.%s'%(net, addr)
+        self.id = f'{net}.{addr}'
         super().__init__(net, addr, portSeq, Dischargable(batt), pos, topo, ctrl, cls)
         # Mote's tx and rx Queues
         self.aggrMembs = {}     
@@ -2053,7 +2067,7 @@ class Sink(Node):
             cls (_type_, optional): sensor device attached to wireless node. Defaults to None.
         """
         
-        self.id = '%s.%s'%(net, addr)
+        self.id = f'{net}.{addr}'
         super().__init__(net, addr, portSeq, Chargable(), pos, topo, ctrl)
         # Sinks tx and rx Queues (assume the sink has unlimited queue for sending/receiving packets)
         self.dpid = dpid

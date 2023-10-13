@@ -36,6 +36,15 @@ print(mlb.fit_transform(pro.numpy()))
 
 print(torch.tensor(0).float())
 '''
+x = 100+bool(False)*128
+print(x)
+print(bool(x >> 7))
+print("{0:b}".format(x))
+print("{0:b}".format(((x << 1) & 0x00ff) >> 1))
+print(((x << 1) & 0x00ff) >> 1)
+print("{0:b}".format(x >> 7))
+print(bool(x >> 7))
+'''
 obs_cols = ['port', 'intftypeval', 'datatypeval', 'distance', 'denisty', 'alinks', 'flinks', 'x', 'y', 'z', 'batt', 'delay', 'throughput', 'engcons', \
 'txpackets_val', 'txbytes_val', 'rxpackets_val', 'rxbytes_val', 'drpackets_val', 'txpacketsin_val', 'txbytesin_val', 'rxpacketsout_val', 'rxbytesout_val'] 
 cal_cols = ['ts', 'id']
@@ -65,7 +74,6 @@ obs = obs.iloc[:,1:].astype(float)
 vs = torch.ones((200, 20))
 print(vs.shape)
 
-'''
 attn_scores = torch.matmul(vs, vs.transpose(-2, -1)) / sqrt(5)
 attn_probs = torch.softmax(attn_scores, dim=-1)
 output = torch.matmul(attn_probs, vs)
@@ -76,7 +84,6 @@ joindsplitvs = splitvs.transpose(0, 1).contiguous().view(200, 20)
 print(joindsplitvs.shape)
 jj = output + joindsplitvs
 print(jj.shape)
-'''
 
 pe = torch.zeros(200, 4)
 position = torch.arange(0, 200, dtype=torch.float).unsqueeze(1)
@@ -89,7 +96,6 @@ x = torch.randn((200, 4))
 output = x + pe
 print(x.size(1))
 print(output)
-'''
 R = np.repeat(np.mean((obs['throughput'] - obs['delay'] - obs['drpackets_val']).to_numpy().reshape(-1,1)), obs.shape[0], axis=0).reshape(-1,1)
 ls = [1,2,3,4]
 print(ls[-1])

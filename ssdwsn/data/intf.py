@@ -172,7 +172,6 @@ class _WirelessIntf(_Intf):
         """
         super().__init__(nodeId, intfType, ip, port, mac, **params)   
         self.name = 'wintf-'+nodeId
-        self.seq = port - ct.BASE_NODE_PORT
 
     def getAntHeight(self):
         return self.params['antHeight']
@@ -274,8 +273,7 @@ class SixLowPan(_WirelessIntf):
             iwpan phy{phy[0]} set channel 0 {int(self.params['channel'])}; \
             ip link add link wpan{self.seq} name {self.name} type lowpan; \
             ip link set wpan{self.seq} up; \
-            ip link set {self.name} up; \
-            ip addr add {self.ip6} dev {self.name}",
+            ip link set {self.name} up",
         shell=True, text=True)
 
 
@@ -388,6 +386,8 @@ class SixLowPan(_WirelessIntf):
         # system('ip netns exec {} ifconfig {} up {} netmask {}'.format(self.pid, 'wpan-'+self.id, self.ip6, self.ip6Mask))
         # system('ip netns exec {} route add default gw {} dev {}'.format(self.pid, self.ip6, 'wpan-'+self.id))
         """
+    def __str__(self) -> str:
+        return f'Wpan{self.seq} {self.name} IP: {self.ip}:{self.port} IP6: {self.ip6}'
         
 class LoRaWan(_WirelessIntf):
     """LoWAN interface mac802154 (lorawan)"""

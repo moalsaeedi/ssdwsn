@@ -63,6 +63,8 @@ class Neighbor:
     def getToAggrDist(self):
         return self.toaggrdist
 
+    def __str__(self) -> str:
+        return f'Dist: {self.dist} Addr: {self.addr.__str__()} RSSI: {self.rssi} Port: {self.port} ToSinkDist: {self.tosinkdist} ToAggrDist: {self.toaggrdist}'
     # def getColorInt(self):
     #     return getColorInt(self.color)
 

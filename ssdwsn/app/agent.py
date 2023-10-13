@@ -2700,7 +2700,7 @@ class PPO_Agent3(LightningModule):
 class PPO_Agent4(LightningModule):
     """ 
     """
-    def __init__(self, ctrl, num_envs=50, batch_size=2, obs_time = 20, nb_optim_iters=4, hidden_size=256, samples_per_epoch=2,
+    def __init__(self, ctrl, num_envs=50, batch_size=2, nb_optim_iters=4, hidden_size=256, samples_per_epoch=2,
                 epoch_repeat=4, policy_lr=1e-4, value_lr=1e-3, gamma=0.99, epsilon=0.3, entropy_coef=0.1,
                 loss_fn=F.mse_loss, optim=AdamW):
         super().__init__()
@@ -2732,7 +2732,7 @@ class PPO_Agent4(LightningModule):
         self.ep_entropy = []
         self.ep_step = 0
 
-        self.save_hyperparameters('batch_size', 'obs_time', 'nb_optim_iters', 'policy_lr', 'value_lr', 
+        self.save_hyperparameters('batch_size', 'nb_optim_iters', 'policy_lr', 'value_lr', 
             'hidden_size', 'gamma', 'loss_fn', 'optim', 'samples_per_epoch', 'entropy_coef',
             'epoch_repeat', 'epsilon')
         
