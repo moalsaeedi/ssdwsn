@@ -377,7 +377,7 @@ class Node:
                             socket.SOCK_DGRAM,
                             0, socket.AI_PASSIVE
                         )
-                        logger.error(ni.ifaddresses('6lowpan-'+str(tmpId))[socket.AF_INET6])
+                        # logger.error(ni.ifaddresses('6lowpan-'+str(tmpId))[socket.AF_INET6])
                         # if src node set the sending timestamp
                         if srcid == self.id:
                             packet.setTS(round(time.time(), 4))
@@ -919,7 +919,7 @@ class Node:
         aggrdist = int.to_bytes(self.aggrDistance, 1, 'big', signed=False) # aggr distance
         aggrdst = self.aggrAddress.getArray() # aggr destination
         aggrpayload = bytearray(aggrdist+aggrdst) # aggr beacon's payload
-        p = BeaconPacket(net=self.myNet + (int(acked)*128), src=self.myAddress, dst=self.myAddress, distance=self.sinkDistance, battery=self.battery.getLevel(), 
+        p = BeaconPacket(net=self.myNet + (int(acked)*128), src=self.myAddress, dst=self.sinkAddress, distance=self.sinkDistance, battery=self.battery.getLevel(), 
             pos=self.position, intfType=await self.getIntfType(), sensorType=await self.getSensorType(), port=self.wintf.port-ct.BASE_NODE_PORT, aggrpayload=aggrpayload)
         if dst:
             p.setNxh(dst)
@@ -1110,7 +1110,7 @@ class Node:
         elif conf == ConfigProperty.DRL_ACTION.getValue():
             idx = 0
             if val[idx] == ct.DRL_CH_INDEX:   
-                # '''
+                '''
                 isAggrHead = bool(int.from_bytes(val[idx+1:idx+1+ct.DRL_CH_LEN], byteorder='big', signed=False))
                 if isAggrHead:
                     self.aggrDistance = 0
@@ -1133,7 +1133,7 @@ class Node:
                 self.stats.extend(b'ST'+b'NODE'+str(json.dumps({'id':self.id, 'color':'orange' if self.aggrDistance == 0 else 'blue'})).encode('utf-8')+b';')
                 # if self.sinkDistance < ct.DIST_MAX + 1 and (old_isAggrHead != self.isAggrHead or old_isAggrMemb != self.isAggrMemb):
                 # await self.sendBeacon()
-                # '''
+                '''
                 idx += ct.DRL_CH_LEN+1
             if val[idx] == ct.DRL_NH_INDEX:
                 # '''
@@ -1162,7 +1162,7 @@ class Node:
                 # '''
                 self.rptti['value'] = int.from_bytes(val[idx+1:idx+1+ct.DRL_RT_LEN], byteorder='big', signed=False)
                 await self.updateStats('rptti')
-                logger.error(f'SET RPTTI: {self.rptti["value"]} IN NODE: {self.id}')
+                # logger.error(f'SET RPTTI: {self.rptti["value"]} IN NODE: {self.id}')
                 # '''
                 idx += ct.DRL_RT_LEN+1
 
@@ -1236,8 +1236,8 @@ class Node:
         matches = []
         key = 'src:'+str(packet.getSrc().intValue())+'dst:'+str(packet.getDst().intValue())+'typ:'+str(packet.getType())
         matches = self.flowTable.get_matching(key)
-        print(f'key:{key}')
-        print(f'matches:{matches}')
+        # print(f'key:{key}')
+        # print(f'matches:{matches}')
         if matches:
             # get the most specific matched entry (rule)
             max_key = max(matches, key=len)
@@ -2030,7 +2030,7 @@ class Mote(Node):
                         dst = self.sinkAddress if self.aggrAddress.__eq__(self.myAddress) else self.aggrAddress
                         packet = DataPacket(net=self.myNet, src=self.myAddress, dst=dst, payload=data)             
                         # packet.setTS(round(time.time(), 4))
-                        packet.setPrh(self.myAddress)
+                        # packet.setPrh(self.myAddress)
                         # self.ts1 = time.time()  
                         # self.prv_loc = 'sensor' 
                         # self.rxQueue.put_nowait((packet, self.sinkDistance, ct.RSSI_MAX))

@@ -204,10 +204,10 @@ async def udneighs(sid, data):
 
 @sio.event
 async def savetopo(sid, data):
-    filename = data['filename']
-    data.pop('filename')
+    filename = data['savefilename']
+    data.pop('savefilename')
     data = json.dumps(data)
-    async with aiofiles.open('outputs/topo/'+str(filename)+'.json', mode='w') as f:
+    async with aiofiles.open('outputs/topo/'+str(filename), mode='w') as f:
         await f.write(data)
 
 @sio.event

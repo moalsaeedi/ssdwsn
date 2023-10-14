@@ -1,0 +1,12 @@
+batch_size: 50
+entropy_coef: 0.1
+epoch_repeat: 4
+epsilon: 0.3
+gamma: 0.99
+hidden_size: 256
+loss_fn: !!python/name:torch.nn.functional.mse_loss ''
+nb_optim_iters: 4
+optim: !!python/name:torch.optim.adamw.AdamW ''
+policy_lr: 0.0001
+samples_per_epoch: 1
+value_lr: 0.001

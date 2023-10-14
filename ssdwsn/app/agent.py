@@ -28,7 +28,7 @@ from ssdwsn.util.utils import quietRun, CustomFormatter
 from ssdwsn.app.lossFunction import lossBCE, lossCCE, lossMSE
 from app.utilts import polyak_average
 from ssdwsn.app.dataset import RLDataset_A2C, RLDataset_A2C_Shuffle, RLDataset_SAC, RLDataset_SAC_Shuffle, RLDataset_PPO, RLDataset_PPO_shuffle, RLDataset_GAE, RLDataset_GAE_shuffle, ExperienceSourceDataset
-from ssdwsn.app.network import SAC_DQN, A2C_DQN, HE_DQN, CriticNetwork, A2C_GradientPolicy, ActorNetwork, ValueNetwork, SAC_GradientPolicy, HE_GradientPolicy, TD3_DQN, TD3_GredientPolicy, LSTM, Transformer, PPO_GradientPolicy, PPO_Policy, PPO_Att_Policy, PPO_Att_ValueNet, PPO_ValueNet, SelfAttention, A2C_ValueNet, REINFORCE_GradientPolicy
+from ssdwsn.app.network import SAC_DQN, A2C_DQN, HE_DQN, CriticNetwork, A2C_GradientPolicy, ActorNetwork, ValueNetwork, SAC_GradientPolicy, HE_GradientPolicy, TD3_DQN, TD3_GredientPolicy, LSTM, Transformer, PPO_GradientPolicy, PPO_Policy, PPO_ValueNet, SelfAttention, A2C_ValueNet, REINFORCE_GradientPolicy
 from torchmetrics import MeanSquaredError, R2Score
 from torch.optim import Adam, AdamW, SGD, LBFGS
 from torch.distributions import Normal, kl_divergence
@@ -2738,9 +2738,9 @@ class PPO_Agent4(LightningModule):
         
     def reset(self, nds=None):
         """Get network state observation"""
-        state, nodes, sink_state, sink_state_nodes = self.networkGraph.getState(nodes=nds, cols=self.obs_cols)                
-        obs = np.column_stack((state, np.repeat(np.sqrt(np.square(state[:,10] - np.mean(state[:,10]))), state.shape[0], axis=0).reshape(-1,1), np.repeat(state[:,-1].mean(), state.shape[0], axis=0).reshape(-1,1)))
-
+        state, nodes, sink_state, sink_state_nodes = self.networkGraph.getState(nodes=nds, cols=self.obs_cols)  
+        obs = np.column_stack((state, np.sqrt(np.square(state[:,10] - state[:,10].mean())).reshape(-1,1), np.repeat(state[:,-1].mean(), state.shape[0], axis=0).reshape(-1,1)))
+        
         data = pd.concat([pd.DataFrame(obs, columns=self.obs_cols+self.cal_cols, dtype=float)], axis=1)
         return data, nodes
     
@@ -2879,7 +2879,7 @@ class PPO_Agent4(LightningModule):
             delay.append(rev_nxt_obs['delay'].mean())
             throughput.append(rev_nxt_obs['throughput'].mean())
             engcons.append(rev_nxt_obs['engcons'].mean())
-            droppackets.append(rev_nxt_obs['drpackets'].mean())
+            droppackets.append(rev_nxt_obs['drpackets_val'].mean())
             pd.concat([pd.DataFrame(nodes, columns=['node']),
                 obs, 
                 pd.DataFrame(action, columns=self.action_cols),
@@ -3081,10 +3081,10 @@ class PPO_Agent5(LightningModule):
         # self.action_dims = self.env.action_space.shape[0]
         # self.max_action = self.env.action_space.high
         self.obs_nds = None
-        self.policy = PPO_Att_Policy(self.obs_dims, hidden_size, self.action_dims)
+        self.policy = PPO_Policy(self.obs_dims, hidden_size, self.action_dims)
         self.target_policy = copy.deepcopy(self.policy)
         # self.value_net = PPO_Att_ValueNet(self.obs_dims+self.action_dims, hidden_size)
-        self.value_net = PPO_Att_ValueNet(self.obs_dims, hidden_size)
+        self.value_net = PPO_ValueNet(self.obs_dims, hidden_size)
         self.target_val_net = copy.deepcopy(self.value_net) 
 
         self.buffer = deque(maxlen=samples_per_epoch)

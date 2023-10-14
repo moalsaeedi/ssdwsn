@@ -1401,7 +1401,7 @@ class DutySchedulerCtrl(Controller):
     def ctrlLearningWorker(self):
         async def async_thread():
             # run the RL model after 60 seconds of initiating the network simulation (discovery phase)
-            await asyncio.sleep(180)
+            await asyncio.sleep(60)
             # run the blocking ML code in separate thread (make sync code as (awaitable) async code)
             
             from ssdwsn.app.agent import SAC_Agent, A2C_Agent, SAC_Agent_, SAC_Agent__, TD3_Agent, PPO_Agent, PPO_Agent1, PPO_Agent2, PPO_Agent3, PPO_Agent4, PPO_Agent5, REINFORCE_Agent, PPO_GAE_Agent, PPO_MultiAgent

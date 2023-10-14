@@ -93,6 +93,20 @@
                 <input name="batt" type="range" id="batt" min="0" max="9000000" value="50000" />
                 <span>BATTERY (mC)</span>
            </div>
+           <div class="input-field col s3">
+               <label>
+                   <input name="israndom" id="israndom" type="checkbox" disabled="disabled"/>
+                   <span>IS RANDOM</span>
+               </label>
+           </div>
+           <div class="input-field col s3">
+               <input name="nnodes" id="nnodes" type="text" class="validate" value="25" disabled="disabled">
+               <span>NUMBER OF NODES</span>
+           </div>
+           <div class="input-field col s3">
+               <input name="radius" id="radius" type="text" class="validate" value="500" disabled="disabled">
+               <span>RADIUS (meter)</span>
+           </div>
 		 <div class="input-field col s12">
           <button type="submit" class="modal-action modal-close waves-effect waves-light btn">ADD</button>
         </div>        
@@ -309,6 +323,8 @@ var avgengconsumption = 0.0;
 var tmppath = '';
 var currscale = 0.0;
 var currtrans = [0.0, 0.0];
+
+var ndpnts = {};
 /*
 var term = $('#terminal-container').terminal({
     foo: async function() {
@@ -974,8 +990,10 @@ function reloaddata(key) {
     if (key == "ctrls"){
         results = [];
         tmp = {};
-        JSON.parse(sessionStorage.getItem("ctrls"), (key, value) => {  
-            tmp[key] = value
+        JSON.parse(sessionStorage.getItem("ctrls"), (key, value) => { 
+            if(key != 0){
+                tmp[key] = value;
+            };
             if (key == 'port'){
                 results.push(tmp);
                 tmp = {};
@@ -983,8 +1001,7 @@ function reloaddata(key) {
         });
         $.each(results, function(i, c){
             $('#ctrls').append('<li><i class="material-icons left">computer</i></li>');
-            addctrladdr();
-        });
+        });              
         return results;
     };
     if (key == "configs"){
@@ -1110,11 +1127,9 @@ $('#maingrid').click( function(e) {
     let x = (e.clientX - rect.left) / scale; //x position within the element.
     let y = (e.clientY - rect.top) / scale;  //y position within the element.
     addr = nodeAddr(nxt_node_id_count++);
-    $('#addnode').modal('open');
-    // for(ctrl in controllers){
-    //     $('#ctrl').add(ctrl['ip']+':'+ctrl['port']);
-    // }
-    // <option value="dctrl">Controller-Dijkstra</option>        
+      
+    addctrladdr();
+    $('#addnode').modal('open');        
     $('#xpos').attr('value', x);
     $('#ypos').attr('value', y);
     $('#zpos').attr('value', 0);
@@ -1127,14 +1142,22 @@ $('#maingrid').click( function(e) {
 
 //TODO
 $('#issink').on('click', function(e){
-    // console.log('issink clicked');
-    // if($(this).attr('checked')){
-    //     $('#ctrl').removeAttr("disabled");
-    //     $('#ctrl').formSelect();
-    // };
+    if($(this).prop('checked')){
+        $('#israndom').prop("checked", false);
+        $('#israndom').prop("disabled", true);
+        $('#nnodes').prop("disabled", true);
+        $('#radius').prop("disabled", true);
+    }else{
+        $('#israndom').prop("checked", false);
+        $('#israndom').prop("disabled", false);
+        $('#nnodes').prop("disabled", false);
+        $('#radius').prop("disabled", false);
+    };
 });
 
 $( "#addnodeform" ).on( "submit", function(e) {
+    sessionStorage.removeItem("topofilename");
+    topofilename = '';
     dataString = $(this).serializeArray();
     json = {};
     nd = {};
@@ -1177,8 +1200,87 @@ $( "#addnodeform" ).on( "submit", function(e) {
     nd['rxbytes'] = 0;
     nodes.push(nd);
     // console.log(nodes);
-    
     draw();
+
+    if($('#israndom').prop('checked')){
+        nnodes = parseInt(json.nnodes);
+        radius = parseInt(json.radius);
+        i = 1;
+        timestamp = Date.now();
+        while(i < nnodes){
+            isfit = true;
+            r = radius * Math.sqrt(Math.random());
+            theta = Math.random() * 2 * Math.PI;
+            pt_x = parseInt(json.x) + r * Math.cos(theta);
+            pt_y = parseInt(json.y) + r * Math.sin(theta);
+            // pt_angle = Math.random() * 2 * Math.PI;
+            // pt_radius_sq = Math.random() * radius * radius;
+            // pt_x = Math.sqrt(pt_radius_sq) * Math.cos(pt_angle);
+            // pt_x = pt_x + parseInt(json.x);
+            // pt_y = Math.sqrt(pt_radius_sq) * Math.sin(pt_angle);
+            // pt_y = pt_y + parseInt(json.y);
+            distance = 0;
+            if( i > 1){
+                isfit = false;
+                $.each(ndpnts,function(index,value){             
+                    distance = Math.sqrt( (pt_x - value[0])**2 + (pt_y - value[1])**2 )
+                    if((distance < 100) && (distance > 50)){
+                        isfit = true;
+                    };
+                    if(distance <= 50){
+                        isfit = false;
+                        return false;
+                    };
+                });
+            };
+            if(isfit){
+                console.log(distance+'-'+i);
+                ndpnts[i.toString()] = [pt_x,pt_y];
+                nd = {};
+                
+                addr = nodeAddr(nxt_node_id_count++);
+                id = json.net + '.' + addr;
+                nodeids.push(id);
+                nd['datatype'] = json.datatype;
+                nd['addr'] = addr;
+                nd['ctrl'] = json.ctrl;
+                nd['intftype'] = settings['intftype'];
+                nd['antrange'] = 0;
+                nd['denisty'] = 0;
+                nd['batt'] = parseInt(json.batt);
+                nd['color'] ='blue';
+                nd['issink'] = false;
+                nd['distance'] = 255;
+                nd['id'] = id;
+                // nd['lastupdate'] = 0;
+                // nd['active'] = false;
+                // nd['predicted'] = false;
+                nd['net'] = parseInt(json.net);
+                nd['port'] = nxt_node_port_count++; //may updated later on
+                nd['pos'] = [pt_x, pt_y];
+                nd['x'] = pt_x;
+                nd['y'] = pt_y;
+                // nd['weight'] = 0.0;
+                nd['delay'] = 0.0;
+                nd['throughput'] = 0.0;
+                nd['engcons'] = 0.0;
+                nd['alinks'] = 0;
+                nd['flinks'] = 0;
+                nd['txpackets'] = 0;
+                nd['txbytes'] = 0;
+                nd['rxpackets'] = 0;
+                nd['rxbytes'] = 0;
+                nodes.push(nd);
+                // console.log(nodes);
+                i++;
+                draw();
+            };
+
+            if((Date.now() - timestamp) > 50){                
+                return false;
+            }
+        };
+    };
     
     // node.enter().insert("circle")
     //     .attr({"r": 7,
@@ -1227,6 +1329,10 @@ $( "#addnodeform" ).on( "submit", function(e) {
 
     e.preventDefault();
 });
+
+function rand(min, max) {
+    return Math.random() * (max - min) + min;
+};
 
 function clear(e){
     d3.values(nodes).forEach(function(aNode){ aNode.linkCount = 0;}); 
@@ -1460,9 +1566,9 @@ $( "#savetopoform" ).on( "submit", function(e) {
     data['nxt_node_id_count'] = nxt_node_id_count;
     data['nxt_ctrl_port_count'] = nxt_ctrl_port_count;
     data['nxt_node_port_count'] = nxt_node_port_count;
-    data['savefilename'] = json.savefilename;
-    topofilename = json.savefilename;
-    sessionStorage.setItem("topofilename", JSON.stringify(json.savefilename));
+    data['savefilename'] = json.savefilename+'.json';
+    topofilename = json.savefilename+'.json';
+    sessionStorage.setItem("topofilename", JSON.stringify(json.savefilename+'.json'));
     socket.emit('savetopo', data);
 
     e.preventDefault();
