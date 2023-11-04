@@ -152,8 +152,6 @@ class Node:
         self.ready = True
         #Time transmission intervals
         self.ts_dict = {}
-        #Non-Acked beacons
-        self.nonacks = {}
 
     async def terminatef(self):
         logger.warn(f'node {self.id} is terminated .....................')
@@ -352,12 +350,14 @@ class Node:
                             # self.rxRadioSocket.sendto(packet.toByteArray(), sockaddr) #scope_id can be 0                        
                             # packet.setTS(round(time.time(), 4))
                             # self.trxRadioSocket.sendto(packet.toByteArray(), sockaddr) #scope_id can be 0
+                            ts1 = round(time.time(), 4)
                             self.sock.sendto(packet.toByteArray(), sockaddr)
+                            ts2 = round(time.time(), 4)
                             # asyncio.get_running_loop().run_in_executor(None, self.txRadio, packet, sockaddr)
 
                             # await self.asyncsocket.send(packet.toByteArray(), (self.getIP6FromSeq(self.neighborTable[key].getPort()).split('/')[0], self.neighborTable[key].getPort()))
                             # self.rxRadioSocket.sendto(packet.toByteArray(), ('ff02::1', self.neighborTable[key].getPort(), 0, socket.if_nametoindex('6lowpan-'+str(key))))
-                            self.battery.transmitRadio(packet.getLen())
+                            self.battery.transmitRadio(ts2-ts1)
                             await self.updateStats('tx', packet)
                             logger.info(f'{self.id}-----> Sends Packet type ({packet.getTypeName()}) | {packet.getSrc()} --> {packet.getDst()} - Next Hop({packet.getNxh()})')
                     elif tmpId in self.neighborTable:
@@ -399,12 +399,14 @@ class Node:
                         # self.rxRadioSocket.sendto(packet.toByteArray(), sockaddr) #scope_id can be 0
                         # packet.setTS(round(time.time(), 4))
                         # self.trxRadioSocket.sendto(packet.toByteArray(), sockaddr) #scope_id can be 0
+                        ts1 = round(time.time(), 4)
                         self.sock.sendto(packet.toByteArray(), sockaddr)
+                        ts2 = round(time.time(), 4)
                         # asyncio.get_running_loop().run_in_executor(None, self.txRadio, packet, sockaddr)
 
                         # await self.asyncsocket.send(packet.toByteArray(), (self.getIP6FromSeq(self.neighborTable[tmpId].getPort()).split('/')[0], self.neighborTable[tmpId].getPort()))
                         # self.rxRadioSocket.sendto(packet.toByteArray(), ('ff02::1', self.neighborTable[tmpId].getPort(), 0, socket.if_nametoindex('6lowpan-'+str(tmpId))))
-                        self.battery.transmitRadio(packet.getLen()) 
+                        self.battery.transmitRadio(ts2-ts1) 
                         await self.updateStats('tx', packet)
                         logger.info(f'{self.id}-----> Sends Packet type ({packet.getTypeName()}) | {packet.getSrc()} --> {packet.getDst()} - Next Hop({packet.getNxh()})')
                 except Exception as e:
@@ -430,7 +432,6 @@ class Node:
         #     self.ts1 = time.time()
         #     self.prv_loc = 'channel'
         # async def async_thread():
-        self.battery.receivedRadio(packet.getLen())
         rssi = ct.RSSI_MAX #default RSSI
         dist = self.wintf.params['antRange'] #default Range
         if packet.isssdwsnPacket():
@@ -479,7 +480,7 @@ class Node:
         async def async_thread():
             ts = round(time.time(), 4)
             while self.ready:
-                stts = time.time()
+                ts1 = time.time()
                 if (lambda: self.battery.getLevel())() == 0:
                     logger.warn(f'{self.id} BATTERY is empty...')
                     # await self.updateNodeColor('black')
@@ -488,11 +489,11 @@ class Node:
                     self.isActive = False
                     break           
                 await asyncio.sleep(2)
-                self.battery.keepAlive(round(time.time(), 4) - ts)
+                self.battery.keepAlive(time.time() - ts1)
                 self.remvExpiredEnties(round(time.time(), 4) - ts)
                 ts = round(time.time(), 4)
                 await self.updateStats('batt')
-                logger.info(f'checkBatteryWorker takes: {time.time() - stts}')
+                logger.info(f'checkBatteryWorker takes: {time.time() - ts1}')
         asyncio.run(async_thread())
 
     def socketWorker(self):
@@ -504,7 +505,10 @@ class Node:
             
             self.sock = Socket(transport, protocol)
             while self.ready:
+                ts1 = round(time.time(), 4)
                 data, addr, qsize = await self.sock.recvfrom()
+                ts2 = round(time.time(), 4)
+                self.battery.receivedRadio(ts2-ts1)
                 if len(data) >= ct.DFLT_HDR_LEN and len(data) <= ct.MTU:
                     packet = Packet(data)
                     # if qsize > 0:
@@ -722,7 +726,7 @@ class Node:
             ts2 = round(time.time(), 4)
             self.energycons['value'] += (self.batt['value'] - self.battery.getLevel())
             self.energycons['value_ts'] += (self.batt['value'] - self.battery.getLevel())
-            self.energycons['rate'] = zero_division(self.energycons['value'], (ts2 - ts1))            
+            self.energycons['rate'] = zero_division(self.battery.getInitLevel() - self.battery.getLevel(), (ts2 - ts1))
             # self.energycons['ts'] = ts2
             self.batt['value'] = self.battery.getLevel()
             self.batt['value_ts'] = self.battery.getLevel()
@@ -1091,6 +1095,7 @@ class Node:
         """Execute the payload of a Write Configuration Packet"""
         val = packet.getParams()
         conf = packet.getConfigId()
+        ts = packet.getTS()
         if conf == ConfigProperty.MY_ADDRESS.getValue():
             self.myAddress = Addr(val)
         elif conf == ConfigProperty.DIST.getValue():
@@ -1110,7 +1115,7 @@ class Node:
         elif conf == ConfigProperty.DRL_ACTION.getValue():
             idx = 0
             if val[idx] == ct.DRL_CH_INDEX:   
-                '''
+                # '''
                 isAggrHead = bool(int.from_bytes(val[idx+1:idx+1+ct.DRL_CH_LEN], byteorder='big', signed=False))
                 if isAggrHead:
                     self.aggrDistance = 0
@@ -1133,7 +1138,7 @@ class Node:
                 self.stats.extend(b'ST'+b'NODE'+str(json.dumps({'id':self.id, 'color':'orange' if self.aggrDistance == 0 else 'blue'})).encode('utf-8')+b';')
                 # if self.sinkDistance < ct.DIST_MAX + 1 and (old_isAggrHead != self.isAggrHead or old_isAggrMemb != self.isAggrMemb):
                 # await self.sendBeacon()
-                '''
+                # '''
                 idx += ct.DRL_CH_LEN+1
             if val[idx] == ct.DRL_NH_INDEX:
                 # '''
@@ -1156,11 +1161,19 @@ class Node:
                     # self.sinkRssi = self.neighborTable[str(self.myNet)+'.'+act_nxh_node.__str__()].getRssi()         
                     if len(entry.windows):
                         await self.insertRule(entry)
+                else:
+                    for key in self.flowTable.get_matching('dst:'+str(self.sinkAddress.intValue())):
+                        logger.info(f"{self.id} REMOVE rule ({self.flowTable[key]}) at key {key}")
+                        # self.flowTable.pop(key)
+                        if key != '.*':
+                            del self.flowTable[key]
                 # '''
                 idx += ct.DRL_NH_LEN+1
             if val[idx] == ct.DRL_RT_INDEX:
                 # '''
-                self.rptti['value'] = int.from_bytes(val[idx+1:idx+1+ct.DRL_RT_LEN], byteorder='big', signed=False)
+                self.rptti['value'] = abs((round(time.time(), 4) - ts) + int.from_bytes(val[idx+1:idx+1+ct.DRL_RT_LEN], byteorder='big', signed=False))
+                if self.rptti['value'] > ct.MAX_RP_TTI:
+                    self.rptti['value'] -= ct.MAX_RP_TTI
                 await self.updateStats('rptti')
                 # logger.error(f'SET RPTTI: {self.rptti["value"]} IN NODE: {self.id}')
                 # '''

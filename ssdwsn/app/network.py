@@ -3,8 +3,8 @@ import nest_asyncio
 nest_asyncio.apply()
 from concurrent.futures import ThreadPoolExecutor
 import logging
-from typing import Dict
-from math import floor, sqrt, log, cos, sin
+from typing import Dict, Union, Tuple
+from math import floor, sqrt, log, cos, sin, pi
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
@@ -13,7 +13,7 @@ import torch.nn.functional as F
 import torch.nn as nn
 import torch.optim as optim
 from torch.autograd import Variable
-from torch.distributions import Normal
+from torch.distributions import Categorical, Normal
 from os import cpu_count, path
 from ssdwsn.util.utils import quietRun, CustomFormatter
 # ssdwsn libraries
@@ -532,13 +532,16 @@ class PPO_ValueNet(nn.Module):
     """
     def __init__(self, input_dim, hidden_size, dropout=0.1):
         super().__init__()
-        self.norm = LayerNorm(input_dim).to(device)
+        self.norm = nn.LayerNorm(input_dim).to(device)
         self.ff = nn.Sequential(
             # nn.BatchNorm1d(input_dim),
             nn.Linear(input_dim, hidden_size),
-            nn.ReLU(),        
+            NewGELU(),
+            nn.Linear(hidden_size, hidden_size),
+            NewGELU(),
             nn.Linear(hidden_size, 1)
         ).to(device)
+
     def forward(self, x):
         if isinstance(x, np.ndarray):
             x = T.from_numpy(x).to(device)
@@ -553,24 +556,23 @@ class PPO_Policy(nn.Module):
     def __init__(self, input_dim, hidden_size, action_dim, dropout=0.1):
         super().__init__()
 
-        self.norm = LayerNorm(input_dim).to(device)
-        self.self_attn = SelfAttention(input_dim).to(device)
-        # self.self_attn = MultiHeadAttention(input_dim, 4).to(device)
-        self.norm1 = LayerNorm(input_dim).to(device)
+        self.norm = nn.LayerNorm(input_dim).to(device)
+        # self.self_attn = SelfAttention(input_dim).to(device)
+        self.self_attn = MultiHeadAttention(input_dim, 9).to(device)
+        self.norm1 = nn.LayerNorm(input_dim).to(device)
         self.ff = nn.Sequential(
             # nn.BatchNorm1d(input_dim),
             nn.Linear(input_dim, hidden_size),
-            nn.ReLU(),
+            NewGELU(),
+            nn.Linear(hidden_size, hidden_size),
+            NewGELU(),
             nn.Linear(hidden_size, input_dim)
         ).to(device)
-        self.norm2 = LayerNorm(input_dim).to(device)
+        self.norm2 = nn.LayerNorm(input_dim).to(device)
         self.dropout = nn.Dropout(dropout).to(device)
 
         self.linear_mu = nn.Linear(input_dim, action_dim).to(device)
-        self.linear_std = nn.Linear(input_dim, action_dim).to(device)
 
-        self.fc = nn.Linear(input_dim, action_dim).to(device)
-        self.logsigmoid = nn.LogSigmoid().to(device)
     def forward(self, x):
         if isinstance(x, np.ndarray):
             x = T.from_numpy(x).to(device)
@@ -592,20 +594,14 @@ class PPO_Policy(nn.Module):
         x = self.norm1(x + self.dropout(attn_output))
         ff_output = self.ff(x)
         x = self.norm2(x + self.dropout(ff_output))
-
-        '''
-        log_prob = self.logsigmoid(self.fc(x))
-        action = T.exp(log_prob)
-        log_prob = log_prob.sum(dim=-1, keepdim=True)
-        # log_prob -= (2* (np.log(2) - action - F.softplus(-2*action))).sum(dim=-1, keepdim=True)
-        '''
-        # '''
+        
+        # action prob distribution
         loc = self.linear_mu(x)
         loc = T.tanh(loc) * 1
-        scale = self.linear_std(x)
-        scale = F.softplus(scale) + 1e-3
-        # scale = T.clip(F.softplus(scale), 1e-6, 1e-3)
-        
+        log_scale = -1e-3 * T.ones_like(loc, dtype=T.float)
+        log_scale = T.nn.Parameter(log_scale)
+        scale = T.exp(log_scale)
+
         dist = Normal(loc, scale)
         action = dist.rsample()
         log_prob = dist.log_prob(action)
@@ -702,7 +698,15 @@ class MultiHeadAttention(nn.Module):
         attn_output = self.scaled_dot_product_attention(Q, K, V, mask)
         output = self.W_o(self.combine_heads(attn_output))
         return output
-
+    
+class NewGELU(nn.Module):
+    """
+    Implementation of the GELU activation function currently in Google BERT repo (identical to OpenAI GPT).
+    Reference: Gaussian Error Linear Units (GELU) paper: https://arxiv.org/abs/1606.08415
+    """
+    def forward(self, x):
+        return 0.5 * x * (1.0 + T.tanh(sqrt(2.0 / pi) * (x + 0.044715 * T.pow(x, 3.0))))
+    
 class TRPO_GradientPolicy(nn.Module):
     """Gradient Policy Network (to predict an action following a normal distribution (infinit possible of actions) of an observation)
     Args:

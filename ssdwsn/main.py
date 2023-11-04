@@ -428,6 +428,7 @@ async def begin(data):
     ct.RL_IDLE = int(settings['idletimeout'])
     ct.BUFFER_SIZE = int(settings['buffersize'])
     ct.MAX_DELAY = int(settings['maxdelay'])
+    ct.SIM_TIME = int(settings['simtime'])
     ct.BE_TTI = int(settings['beaconstti'])
     ct.RP_TTI = int(settings['reportstti'])
     ct.RANDOM_SEED = int(settings['randomseed'])

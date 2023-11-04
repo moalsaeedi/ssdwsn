@@ -25,7 +25,13 @@ class Battery(object):
     def __init__(self, level:int=None):
         if level:
             self.level = level
-        else: self.level = ct.MAX_LEVEL
+            self.initLevel = level
+        else: 
+            self.level = ct.MAX_LEVEL
+            self.initLevel = ct.MAX_LEVEL
+
+    def getInitLevel(self):
+        return int(self.initLevel)
 
     def getLevel(self):
         return int(self.level)
@@ -35,16 +41,16 @@ class Battery(object):
             self.level = batteryLevel
         else: self.level = 0 
 
-    def transmitRadio(self, nBytes):
-        newLevel = self.level - ct.RADIO_TX * nBytes
+    def transmitRadio(self, t):
+        newLevel = self.level - ct.RADIO_TX * t
         self.setLevel(newLevel)
     
-    def receivedRadio(self, nBytes):
-        newLevel = self.level - ct.RADIO_RX * nBytes
+    def receivedRadio(self, t):
+        newLevel = self.level - ct.RADIO_RX * t
         self.setLevel(newLevel)
     
-    def keepAlive(self, n):
-        newLevel = self.level - ct.KEEP_ALIVE * n
+    def keepAlive(self, t):
+        newLevel = self.level - ct.KEEP_ALIVE * t
         self.setLevel(newLevel)
         
 class Dischargable(Battery):
@@ -64,11 +70,11 @@ class Chargable(Battery):
         """
         super().__init__()
         
-    def transmitRadio(self, nBytes):
+    def transmitRadio(self, t):
         pass
     
-    def receivedRadio(self, nBytes):
+    def receivedRadio(self, t):
         pass
     
-    def keepAlive(self, n):
+    def keepAlive(self, t):
         pass

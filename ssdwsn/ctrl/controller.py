@@ -130,9 +130,9 @@ class Controller:
         self.visub = None
         # Buffer of statistics from data plane
         self.buffer = {}
-        self.buffer_size = 5
+        self.buffer_size = 1
         self.perf_buffer = {}
-        self.perf_buffer_size = 5
+        self.perf_buffer_size = 10
 
     async def terminatef(self):
         logger.warn(f'CONTROLLER {self.id} has been terminated ...')
@@ -1409,6 +1409,7 @@ class DutySchedulerCtrl(Controller):
             # agent = A2C(env=self.Env(ctrl, 'SAC_CTRL_SSDWSN') , batch_size=2, samples_per_epoch=4)            
             # await model.run()
             # action_dim = int((ct.MAX_RP_TTI - ct.MIN_RP_TTI)/ct.MAX_DELAY)
+            # agent = PPO_Agent4(ctrl=self, batch_size=10, samples_per_epoch=2)
             agent = PPO_Agent4(ctrl=self, batch_size=50, samples_per_epoch=1)
             await agent.run()
             # await asyncio.gather(*[run_agent(env, node) for node in env.nodes])            

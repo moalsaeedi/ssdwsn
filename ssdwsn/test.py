@@ -36,15 +36,6 @@ print(mlb.fit_transform(pro.numpy()))
 
 print(torch.tensor(0).float())
 '''
-x = 100+bool(False)*128
-print(x)
-print(bool(x >> 7))
-print("{0:b}".format(x))
-print("{0:b}".format(((x << 1) & 0x00ff) >> 1))
-print(((x << 1) & 0x00ff) >> 1)
-print("{0:b}".format(x >> 7))
-print(bool(x >> 7))
-'''
 obs_cols = ['port', 'intftypeval', 'datatypeval', 'distance', 'denisty', 'alinks', 'flinks', 'x', 'y', 'z', 'batt', 'delay', 'throughput', 'engcons', \
 'txpackets_val', 'txbytes_val', 'rxpackets_val', 'rxbytes_val', 'drpackets_val', 'txpacketsin_val', 'txbytesin_val', 'rxpacketsout_val', 'rxbytesout_val'] 
 cal_cols = ['ts', 'id']
@@ -68,9 +59,32 @@ nodes = np.array([['1.0.1'],
 ['1.0.4'],
 ['1.0.5'],
 ])
+
 observation_space = np.hstack((nodes, state))
 obs = pd.concat([pd.DataFrame(observation_space, columns=cat_cols+con_cols)], axis=1)
 obs = obs.iloc[:,1:].astype(float)
+val = obs['port'].to_numpy().reshape(-1,1)
+val = val/val.max()
+print(val)
+val_var = val.var()
+print(val_var)
+res = np.exp(-val_var)
+print(res)
+'''
+log_scale = -0.5 * torch.ones_like(torch.from_numpy(obs['throughput'].to_numpy().reshape(-1,1)), dtype=torch.float)
+print(log_scale)
+log_scale = torch.nn.Parameter(log_scale)
+print(log_scale)
+scale = torch.exp(log_scale)
+print(scale)
+res = pd.concat([obs['throughput'], obs['delay']], axis=1).max(axis=1)
+tt = torch.from_numpy(obs['delay'].to_numpy().reshape(-1,1))
+dictt = dict([(str(nodes[nd].item()),obs['port'].to_numpy()[nd].item()) for nd in range(nodes.shape[0])])
+print(dictt)
+print(tt.flatten().tolist())
+print(res)
+logsig = nn.Softplus()
+print(logsig(torch.from_numpy(np.array([-500], dtype=float))))
 vs = torch.ones((200, 20))
 print(vs.shape)
 

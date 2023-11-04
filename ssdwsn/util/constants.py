@@ -85,6 +85,7 @@ class Constants:
     DIST_MAX = 100 # max distance (number of hops) to the sink
     DIST_AGGR_MAX = 100
     THRES = 63
+    SIM_TIME = 3600
     # Transmission Time Intervals (Data TTI, Report TTI, Beacon TTI)
     DA_TTI = 1000 # in msec
     MAX_DA_TTI = 2000 # in msec
@@ -158,6 +159,7 @@ class Constants:
     RL_IDLE_PERM = 255
     RL_IDLE = 4 #max value is 254
     MAX_DELAY = 200 #max accepted delay (can be updated based on the required QoS)
+    MAX_BANDWIDTH = 250 #max network bandwidth (QoS)
     ST_SIZE = 12
     ST_TTL_INDEX = 0
     ST_TTL_LEN = 4
@@ -242,14 +244,65 @@ class Constants:
     RESPONSE_TIMEOUT = 300
     SLOW_NET = 0.25 #sec slow factor: to slow the network transmission (lower the CPU load)
     # Battery Constants
+    # 1 AA = 9000 Columb (C)
+    # 1 AA = 9000 * 1000 = 9000000 MilliColumb (mC)
+    # 1 AA = 9000 * 1000 * 1.5v = 13500000 Millijoules (mJ)
+    # 1 AA has nearly 2.5 Ah --> 2.5 * 60 * 60 = 9000 C = 9000000 mC
+    # 1 ampere = 1 C    
+    # ampere (A)*(h)*1000 =(mAh)
+    # 1 mA = 0.001 C = 1 mC
+    # 1 mAh = 3.6 C
+    # 1 mAh = (1 / 1000) * 60 * 60 = 3.6 A = 3.6 C
+
+    # 6lowpan protocol on MicaZ mote
+
+    #MICAz (Crossbow Technology Inc. 2012)
+    # The MICAz radio energy model is used for
+    # low power wireless sensor network. The data rate of MICAz
+    # is 250 Kbps. The transmission and receiving currents are 19
+    # mA and 17 mA respectively. The MICA Motes radio energy
+    # model is pre-configured with the specification of power
+    # consumption of MICA motes. It can transmit approximately
+    # 40 kbits per second. In sleep mode, the radio consumes less
+    # than one micro ampere. Receiving and transmission powers
+    # are 10 and 25 mA respectively.
+    # To validate our system, we configure our simulation by
+    # considering the energy consumption parameters of MicaZ
+    # [7], a well-known platform for sensor networks applica-
+    # tions. Note, however, that any other platform with similar
+    # energy requirements can be used instead. MicaZ is com-
+    # posed of a 7 Mhz l controller, a Zigbee-compliant CC2420
+    # radio, 3 LEDs, and an external flash memory. To provide
+    # capacity of sensing, it may be integrated with different
+    # sensor boards. MicaZ is powered by 2-AA batteries, which
+    # should provide a voltage between 2.7 and 3.3 for the cor-
+    # rect working of the sensor node. According to the docu-
+    # mentation, the energy requirements of MicaZ are shown in
+    # Table 2. The power demand of MicaZ depends on the
+    # components that need to be on in the application and in
+    # which mode. In the worst case, if we take into account the
+    # maximum current draw of each component (whose sum is
+    # 64.7 mA according to Table 2), the power required by
+    # MicaZ is 64.7 9 3.3 = 213.5 mW. However, it is typically
+    # sufficient to guarantee 100 mW to power the device.
+    # Current Draw 
+    # 19.7 mA Receive mode
+    # 11 mA TX, -10 dBm
+    # 14 mA TX, -5 dBm
+    # 17.4 mA TX, 0 dBm
+    # 20 μA Idle mode, voltage regular on
+    # 1 μA Sleep mode, voltage regulator off
+    # Electromechanical
+    # Battery 2X AA batteries Attached pack
+    # External Power 2.7 V - 3.3 V Molex connector provided
     MAX_LEVEL = 9000000 # in Millicoulomb (mC)
-    # 9000000 mC = 2 AAA batteries (2,500 mAh) = 15 Days
-    # 5000 mC = 12 min
-    KEEP_ALIVE = 6.8 # mC spent every 1 sec
-    RADIO_TX = 0.0027 # mC to send 1byte
-    RADIO_RX = 0.00094 # mC to receive 1byte
-    BATT_LEVEL = 50000
-    MAX_ENRCONS = 2 * KEEP_ALIVE # maximum energy consumption every 1 sec
+    KEEP_ALIVE = 0.02 # mC spent every 1 sec (Idle mode)
+    KEEP_SLEEP = 0.001 # mC spent every 1 sec (Sleep mode)
+    RADIO_TX = 17.4 # mC spent every 1 sec
+    RADIO_RX = 19.7 # mC spent every 1 sec
+    BATT_LEVEL = 100000 # default simulation initial energy
+    MAX_ENRCONS = 2 * RADIO_RX # maximum energy consumption every 1 sec
+    # 50000 mC energy, which is 50000 * 1.5 = 75000 mJ (75000/9000000 = 0.0083% mJ remaining energy of 1 AA battery)
     # Neighbor Constants
     DEFAULT = 0xFF
     
