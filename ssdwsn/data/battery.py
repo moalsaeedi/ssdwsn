@@ -46,7 +46,8 @@ class Battery(object):
         self.setLevel(newLevel)
     
     def receivedRadio(self, t):
-        newLevel = self.level - ct.RADIO_RX * t
+        # newLevel = self.level - ct.RADIO_RX * t
+        newLevel = self.level - ct.RADIO_RX
         self.setLevel(newLevel)
     
     def keepAlive(self, t):

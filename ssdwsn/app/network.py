@@ -558,7 +558,7 @@ class PPO_Policy(nn.Module):
 
         self.norm = nn.LayerNorm(input_dim).to(device)
         # self.self_attn = SelfAttention(input_dim).to(device)
-        self.self_attn = MultiHeadAttention(input_dim, 9).to(device)
+        self.self_attn = MultiHeadAttention(input_dim, input_dim).to(device)
         self.norm1 = nn.LayerNorm(input_dim).to(device)
         self.ff = nn.Sequential(
             # nn.BatchNorm1d(input_dim),
@@ -571,7 +571,8 @@ class PPO_Policy(nn.Module):
         self.norm2 = nn.LayerNorm(input_dim).to(device)
         self.dropout = nn.Dropout(dropout).to(device)
 
-        self.linear_mu = nn.Linear(input_dim, action_dim).to(device)
+        self.fc = nn.Linear(input_dim, action_dim).to(device)
+        self.logsigmoid = nn.LogSigmoid().to(device)
 
     def forward(self, x):
         if isinstance(x, np.ndarray):
@@ -595,9 +596,15 @@ class PPO_Policy(nn.Module):
         ff_output = self.ff(x)
         x = self.norm2(x + self.dropout(ff_output))
         
+        '''
+        log_prob = self.logsigmoid(self.fc(x))
+        action = T.exp(log_prob)
+        log_prob = log_prob.sum(dim=-1, keepdim=True)
+        '''
+        # '''
         # action prob distribution
-        loc = self.linear_mu(x)
-        loc = T.tanh(loc) * 1
+        loc = self.fc(x)
+        # loc = T.tanh(loc) * 1
         log_scale = -1e-3 * T.ones_like(loc, dtype=T.float)
         log_scale = T.nn.Parameter(log_scale)
         scale = T.exp(log_scale)
@@ -605,7 +612,7 @@ class PPO_Policy(nn.Module):
         dist = Normal(loc, scale)
         action = dist.rsample()
         log_prob = dist.log_prob(action)
-        log_prob = log_prob.sum(dim=-1, keepdim=True)
+        log_prob = log_prob.sum(dim=-1, keepdim=True)        
         # log_prob -= (2* (np.log(2) - action - F.softplus(-2*action))).sum(dim=-1, keepdim=True)
         # entropy = dist.entropy().sum(dim=-1, keepdim=True)
         # '''

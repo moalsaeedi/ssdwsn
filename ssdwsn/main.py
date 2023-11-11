@@ -587,6 +587,7 @@ async def _handle_getresources():
                            "idletimeout": ct.RL_IDLE,
                            "buffersize": ct.BUFFER_SIZE,
                            "maxdelay": ct.MAX_DELAY,
+                           "simtime": ct.SIM_TIME,
                            "beaconstti": ct.BE_TTI,
                            "reportstti": ct.RP_TTI,
                            "randomseed": ct.RANDOM_SEED,

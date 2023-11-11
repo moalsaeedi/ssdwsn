@@ -75,7 +75,6 @@ class Graph:
         self.graph.nodes[id]["batt"] = 0.0
         self.graph.nodes[id]["delay"] = 0.0 #delay of sending packets to sink
         self.graph.nodes[id]["throughput"] = 0.0 #throughput of link to sink
-        self.graph.nodes[id]["engcons"] = 0.0 #node energy consumption per sec
         self.graph.nodes[id]["alinks"] = 0.0 #node active links
         self.graph.nodes[id]["flinks"] = 0.0 #node idle links
         self.graph.nodes[id]["txpackets"] = 0.0 #node transmitted packets per sec
@@ -130,8 +129,6 @@ class Graph:
         self.graph.nodes[id]["intftypeval"] = IntfType.fromStringToInt(intftype)
         self.graph.nodes[id]["datatype"] = datatype
         self.graph.nodes[id]["datatypeval"] = SensorType.fromStringToInt(datatype)
-        # if self.graph.nodes[id].get("batt"):
-        #     self.graph.nodes[id]["engcons"] = round(((self.graph.nodes[id]["batt"] - batt) / (lastupdate - self.graph.nodes[id]["lastupdate"])), 4) #energy consumption (currreported batt - lastreported batt)
         if lastupdate > self.graph.nodes[id]["lastupdate"]:
             self.graph.nodes[id]["batt"] = batt
         self.graph.nodes[id]["port"] = port
@@ -166,7 +163,6 @@ class Graph:
         batt: node's resedual energy
         delay: propagation delay from the data plane node to the sink (msec)
         throughput: rate at which data traverses a link (node-to-sink) (kbps)
-        engcons: energy consumption per second (mC/sec)
         distance: number of hops from a node to the sink
         denisty: number of node's neighbors (adjacencies)
         txpackets: number of transmitted packets per second in a Node
@@ -184,11 +180,11 @@ class Graph:
         """
         state = np.array(list(self.graph.nodes(data=True)))[:,1].tolist()
         state_nodes = np.array(list(self.graph.nodes)).reshape(-1,1)
-        # state = pd.DataFrame(state)[['batt', 'delay', 'throughput', 'engcons', 'distance', 'denisty', 'txpackets', 'txbytes', 'rxpackets', \
+        # state = pd.DataFrame(state)[['batt', 'delay', 'throughput', 'distance', 'denisty', 'txpackets', 'txbytes', 'rxpackets', \
         #     'rxbytes', 'energycons', 'alinks', 'flinks', 'x', 'y', 'z', 'intftypeval', 'datatypeval', 'active', 'id']].values
         
         # get state variables
-        state_cols = ['batt', 'delay', 'throughput', 'engcons', 'distance', 'denisty', 'txpackets', 'txpackets_val', 'txbytes', 'txbytes_val', 'rxpackets', \
+        state_cols = ['batt', 'delay', 'throughput', 'distance', 'denisty', 'txpackets', 'txpackets_val', 'txbytes', 'txbytes_val', 'rxpackets', \
                 'rxpackets_val', 'rxbytes', 'rxbytes_val', 'drpackets', 'drpackets_val', 'alinks', 'flinks', 'x', 'y', 'z', 'intftypeval', 'datatypeval', 'txpacketsin', 'txpacketsin_val', 'txbytesin', \
                 'txbytesin_val', 'rxpacketsout', 'rxpacketsout_val', 'rxbytesout', 'rxbytesout_val', 'port', 'betti', 'rptti']        
         

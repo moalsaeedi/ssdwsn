@@ -893,7 +893,6 @@ class PPO_Agent(LightningModule):
         self.ep_entropy = []
         delay = []
         throughput = []
-        engcons = []
         droppackets = []
         resenergy = []
         returns = [0]
@@ -922,7 +921,6 @@ class PPO_Agent(LightningModule):
             rev_nxt_obs = self.env.scaler.inverse_transform(nxt_obs)
             delay.append(rev_nxt_obs[:,1].mean())
             throughput.append(rev_nxt_obs[:,2].mean())
-            engcons.append(rev_nxt_obs[:,3].mean())
             droppackets.append(rev_nxt_obs[:,10].mean())
             pd.concat([pd.DataFrame(nodes, columns=['node']),
                 pd.DataFrame(obs, columns=['obs'+str(i) for i in range(obs.shape[1])]), 
@@ -1196,7 +1194,6 @@ class PPO_Agent2(LightningModule):
         self.ep_entropy = []
         delay = []
         throughput = []
-        engcons = []
         droppackets = []
         resenergy = []
         returns = [0]
@@ -1234,7 +1231,6 @@ class PPO_Agent2(LightningModule):
             rev_nxt_obs = self.env.scaler.inverse_transform(nxt_obs)
             delay.append(rev_nxt_obs[:,1].mean())
             throughput.append(rev_nxt_obs[:,2].mean())
-            engcons.append(rev_nxt_obs[:,3].mean())
             droppackets.append(rev_nxt_obs[:,10].mean())
             resenergy.append(rev_nxt_obs[:,-1].mean())
             pd.concat([pd.DataFrame(nodes, columns=['node']),
@@ -1655,7 +1651,6 @@ class PPO_Agent1(LightningModule):
         self.ep_entropy = []
         delay = []
         throughput = []
-        engcons = []
         droppackets = []
         resenergy = []
         returns = [0]
@@ -1683,7 +1678,6 @@ class PPO_Agent1(LightningModule):
             rev_nxt_obs = nxt_obs
             delay.append(rev_nxt_obs[:,1].mean())
             throughput.append(rev_nxt_obs[:,2].mean())
-            engcons.append(rev_nxt_obs[:,3].mean())
             droppackets.append(rev_nxt_obs[:,10].mean())
             resenergy.append(rev_nxt_obs[:,-1].mean())
             pd.concat([pd.DataFrame(nodes, columns=['node']),
@@ -2032,7 +2026,6 @@ class PPO_Agent2(LightningModule):
         self.ep_returns = []
         self.delay = []
         self.throughput = []
-        self.engcons = []
         self.droppackets = []
         self.resenergy = []
 
@@ -2058,7 +2051,6 @@ class PPO_Agent2(LightningModule):
         self.ep_returns = []
         self.delay = []
         self.throughput = []
-        self.engcons = []
         self.droppackets = []
         self.resenergy = []
         returns = [0]
@@ -2108,7 +2100,6 @@ class PPO_Agent2(LightningModule):
             rev_nxt_obs = self.env.scaler.inverse_transform(nxt_obs)
             self.delay.append(rev_nxt_obs[:,1].mean())
             self.throughput.append(rev_nxt_obs[:,2].mean())
-            self.engcons.append(rev_nxt_obs[:,3].mean())
             self.droppackets.append(rev_nxt_obs[:,10].mean())
             self.resenergy.append(rev_nxt_obs[:,-1].mean())
             pd.concat([pd.DataFrame(nodes, columns=['node']),
@@ -2472,7 +2463,6 @@ class PPO_Agent3(LightningModule):
         self.ep_returns = []
         self.delay = []
         self.throughput = []
-        self.engcons = []
         self.droppackets = []
         self.resenergy = []
         self.ep_step = 0
@@ -2491,7 +2481,6 @@ class PPO_Agent3(LightningModule):
         self.ep_returns = []
         self.delay = []
         self.throughput = []
-        self.engcons = []
         self.droppackets = []
         self.resenergy = []
         returns = [0]
@@ -2515,7 +2504,6 @@ class PPO_Agent3(LightningModule):
             rev_nxt_obs = self.env.scaler.inverse_transform(nxt_obs)
             self.delay.append(rev_nxt_obs[:,0].mean())
             self.throughput.append(rev_nxt_obs[:,1].mean())
-            self.engcons.append(rev_nxt_obs[:,2].mean())
             self.droppackets.append(rev_nxt_obs[:,9].mean())
             pd.concat([pd.DataFrame(nodes, columns=['node']),
                 pd.DataFrame(obs, columns=['obs'+str(i) for i in range(obs.shape[1])]), 
@@ -2708,9 +2696,9 @@ class PPO_Agent4(LightningModule):
         self.ctrl = ctrl
         self.networkGraph = self.ctrl.networkGraph
 
-        self.obs_cols = ['port', 'intftypeval', 'datatypeval', 'distance', 'denisty', 'alinks', 'flinks', 'x', 'y', 'z', 'batt', 'delay', 'throughput', 'engcons', \
+        self.obs_cols = ['port', 'intftypeval', 'datatypeval', 'distance', 'denisty', 'alinks', 'flinks', 'x', 'y', 'z', 'batt', 'delay', 'throughput', \
         'txpackets_val', 'txbytes_val', 'rxpackets_val', 'rxbytes_val', 'drpackets_val', 'txpacketsin_val', 'txbytesin_val', 'rxpacketsout_val', 'rxbytesout_val', 'rptti'] 
-        self.cal_cols = ['ts', 'batt_var', 'rptti_var']
+        self.cal_cols = ['ts']
         self.action_cols = ['clhop', 'nxhop', 'rptti']
         self.action_space = np.empty((0, len(self.action_cols)))
         self.observation_space = np.empty((0, len(self.obs_cols)+len(self.cal_cols)))
@@ -2741,23 +2729,31 @@ class PPO_Agent4(LightningModule):
     def reset(self, nds=None):
         """Get network state observation"""
         state, nodes, sink_state, sink_state_nodes = self.networkGraph.getState(nodes=nds, cols=self.obs_cols)  
-        obs = np.column_stack((state, np.repeat(int(time.time()), state.shape[0], axis=0).reshape(-1,1), np.repeat(state[:,10].var(), state.shape[0], axis=0).reshape(-1,1), np.repeat(state[:,-1].var(), state.shape[0], axis=0).reshape(-1,1)))
+        obs = np.column_stack((state, np.repeat(int(time.time()), state.shape[0], axis=0).reshape(-1,1)))
         
         data = pd.concat([pd.DataFrame(obs, columns=self.obs_cols+self.cal_cols, dtype=float)], axis=1)
         sink_state = pd.DataFrame(sink_state, columns=self.obs_cols, dtype=float)
         return data, nodes, sink_state, sink_state_nodes
     
     def getReward(self, obs, prv_obs):
+        obs_ts = obs['ts'].mean()
+        prv_obs_ts = prv_obs['ts'].mean()
+        prv_E = prv_obs['batt'].to_numpy().reshape(-1,1)
+
         TH = obs['throughput'].to_numpy().reshape(-1,1)
         D = obs['delay'].to_numpy().reshape(-1,1)
         E = obs['batt'].to_numpy().reshape(-1,1)
-        EC = obs['engcons'].to_numpy().reshape(-1,1)
+        EC = ((prv_E - E)/(obs_ts - prv_obs_ts)).reshape(-1,1)
         RT = obs['rptti'].to_numpy().reshape(-1,1)
-        R = TH/ct.MAX_BANDWIDTH + (RT/RT.max()).var() + (1-(D/ct.MAX_DELAY + EC/ct.MAX_ENRCONS + (E/E.max()).var()))
+        # R = TH/ct.MAX_BANDWIDTH + 4 - D/ct.MAX_DELAY - EC/ct.MAX_ENRCONS - (EC/ct.MAX_ENRCONS).var() - (RT/ct.MAX_RP_TTI).var()
+        R = TH/ct.MAX_BANDWIDTH + 3 - D/ct.MAX_DELAY - EC/ct.MAX_ENRCONS - (EC/ct.MAX_ENRCONS).var()
+        # R = TH/ct.MAX_BANDWIDTH + 1 - D/ct.MAX_DELAY
         # R = TH/ct.MAX_BANDWIDTH + (RT/RT.max()).var() + np.exp(-(D/ct.MAX_DELAY + EC/ct.MAX_ENRCONS + (E/E.max()).var()))
+        # R = TH + RT.var() - D - EC - E.var()
         # R = 1 / (1 + np.exp(-R)) # sigmoid
         # R = np.log1p(np.exp(-np.abs(R))) + np.maximum(R, 0) # softplus
         # R = ((R - R.mean())/R.std()+1e-8).reshape(-1,1)
+        
         return np.nan_to_num(R, nan=0)
     
     def step(self, action, obs, obs_nds):
@@ -2795,7 +2791,7 @@ class PPO_Agent4(LightningModule):
                         act_nxh_node = nr
 
                 # action value
-                val = int.to_bytes(ct.DRL_CH_INDEX, 1, 'big', signed=False)+int.to_bytes(1 if nd in isaggr_action_nodes else 0, ct.DRL_CH_LEN, 'big', signed=False)+\
+                val = int.to_bytes(ct.DRL_AG_INDEX, 1, 'big', signed=False)+int.to_bytes(1 if nd in isaggr_action_nodes else 0, ct.DRL_AG_LEN, 'big', signed=False)+\
                     int.to_bytes(ct.DRL_NH_INDEX, 1, 'big', signed=False)+int.to_bytes(Addr(re.sub(r'^.*?.', '', act_nxh_node)[1:]).intValue(), ct.DRL_NH_LEN, 'big', signed=False)+\
                     int.to_bytes(ct.DRL_RT_INDEX, 1, 'big', signed=False)+int.to_bytes(int(act[2] * (ct.MAX_RP_TTI-ct.MIN_RP_TTI))+ct.MIN_RP_TTI, ct.DRL_RT_LEN, 'big', signed=False)
 
@@ -2819,7 +2815,7 @@ class PPO_Agent4(LightningModule):
                 if sel_route:
                     route = [Addr(re.sub(r'^.*?.', '', x)[1:]) for x in sel_route]
                     route.reverse()
-                    asyncio.get_running_loop().run_until_complete(self.ctrl.setDRLAction(net=int(sinkId.split('.')[0]), sinkId=sinkId, sinkAddr=route[0], dst=route[-1], newVal=val, path=route))
+                    self.ctrl.setDRLAction(net=int(sinkId.split('.')[0]), sinkId=sinkId, sinkAddr=route[0], dst=route[-1], newVal=val, path=route)
         except Exception as ex:
             logger.warn(ex)
         # '''
@@ -2898,67 +2894,75 @@ class PPO_Agent4(LightningModule):
             #     pd.DataFrame(done, columns=['done']),
             #     pd.DataFrame(info, columns=['info'])],
             #     axis=1).to_csv('outputs/logs/experiences.csv', mode='a', sep='\t', index=False, header=not path.exists('outputs/logs/experiences.csv'))
-            self.pltMetrics(reward, nodes, nxt_obs, nxt_sink_obs)    
+            self.pltMetrics(reward, nodes, obs, nxt_obs, nxt_sink_obs)    
             obs = nxt_obs            
             self.ep_step += 1
 
-    def pltMetrics(self, reward, nodes, nxt_obs, nxt_sink_obs):
+    def pltMetrics(self, reward, nodes, obs, nxt_obs, nxt_sink_obs):
         if self.ep_step == 0 and self.global_step == 0:
-            self.tb_logger.add_scalars('Episode/Return', {
+            self.tb_logger.add_scalars('Episode/R', {
                 'R': np.zeros(1)
                 }, global_step=self.ep_step
             )
         else:
-            self.tb_logger.add_scalars('Episode/Return', {
+            self.tb_logger.add_scalars('Episode/R', {
                 'R': reward.sum()
                 }, global_step=self.ep_step
             )
-        self.tb_logger.add_scalars('Episode/Delay', {
-            'DE': nxt_obs['delay'].mean()
+        self.tb_logger.add_scalars('Episode/D', {
+            'D': nxt_obs['delay'].mean()
             }, global_step=self.ep_step
         )
-        self.tb_logger.add_scalars('Episode/Throughput', {
-            'TH': nxt_obs['throughput'].mean() 
+        self.tb_logger.add_scalars('Episode/T', {
+            'T': nxt_obs['throughput'].mean() 
             }, global_step=self.ep_step
         )
-        self.tb_logger.add_scalars('Episode/Energy_Consumption', {
-            'EC': nxt_obs['engcons'].mean()
+        self.tb_logger.add_scalars('Episode/E', {
+            'E': nxt_obs['batt'].mean()
             }, global_step=self.ep_step
         )
-        self.tb_logger.add_scalars('Episode/Dropped_Packets', {
+        self.tb_logger.add_scalars('Episode/DP', {
             'DP': nxt_obs['drpackets_val'].mean()
             }, global_step=self.ep_step
         )
-        self.tb_logger.add_scalars('Episode/Tx_Packets', {
+        self.tb_logger.add_scalars('Episode/TX', {
             'TX': nxt_obs['txpackets_val'].mean()
             }, global_step=self.ep_step
         )
-        self.tb_logger.add_scalars('Episode/Rx_Packets', {
+        self.tb_logger.add_scalars('Episode/RX', {
             'RX': nxt_obs['rxpackets_val'].mean()
             }, global_step=self.ep_step
         )
-        self.tb_logger.add_scalars('Episode/Tx_Packets_In', {
-            'TX_In': nxt_sink_obs['txpacketsin_val'].sum()
+        self.tb_logger.add_scalars('Episode/TX_in', {
+            'TX_in': nxt_sink_obs['txpacketsin_val'].mean()
             }, global_step=self.ep_step
         )
-        self.tb_logger.add_scalars('Episode/Rx_Packets_Out', {
-            'RX_Out': nxt_sink_obs['rxpacketsout_val'].sum()
+        self.tb_logger.add_scalars('Episode/RX_out', {
+            'RX_out': nxt_sink_obs['rxpacketsout_val'].mean()
             }, global_step=self.ep_step
         )
-        self.tb_logger.add_scalars('Episode/Report_TTI', {
+        self.tb_logger.add_scalars('Episode/RT', {
             'RT': nxt_obs['rptti'].mean()
             }, global_step=self.ep_step
         )
-        self.tb_logger.add_scalars('Episode/Energy_Var', {
-            'E_var': nxt_obs['batt'].var()
-            }, global_step=self.ep_step
-        )
-        self.tb_logger.add_scalars('Episode/Report_TTI_Var', {
+        self.tb_logger.add_scalars('Episode/RT_var', {
             'RT_var': nxt_obs['rptti'].var()
             }, global_step=self.ep_step
         )
-        self.tb_logger.add_scalars('Episode/Report_TTI_nds', 
-            dict([(str(nodes[nd].item()),nxt_obs['rptti'].to_numpy()[nd].item()) for nd in range(nodes.shape[0])]),
+        self.tb_logger.add_scalars('Episode/EC', {
+            'EC': ((obs['batt'] - nxt_obs['batt'])/(nxt_obs['ts'] - obs['ts'])).mean()
+            }, global_step=self.ep_step
+        )
+        self.tb_logger.add_scalars('Episode/EC_var', {
+            'EC_var': ((obs['batt'] - nxt_obs['batt'])/(nxt_obs['ts'] - obs['ts'])).var()
+            }, global_step=self.ep_step
+        )
+        self.tb_logger.add_scalars('Episode/E_nds', 
+            dict([(str(nodes[nd].item()), nxt_obs['batt'].to_numpy()[nd]) for nd in range(nodes.shape[0])]),
+            global_step=self.ep_step
+        )
+        self.tb_logger.add_scalars('Episode/RT_nds', 
+            dict([(str(nodes[nd].item()), nxt_obs['rptti'].to_numpy()[nd]) for nd in range(nodes.shape[0])]),
             global_step=self.ep_step
         )
         # self.tb_logger.add_scalars('Episode/Value/Loss', {
@@ -3002,7 +3006,7 @@ class PPO_Agent4(LightningModule):
 
     def train_dataloader(self) -> DataLoader:
         """Initialize the Replay Buffer dataset used for retrieving experiences"""
-        dataset = ExperienceSourceDataset(self._dataset_shuffle)
+        dataset = ExperienceSourceDataset(self._dataset)
         dataloader = DataLoader(
             dataset=dataset, 
             batch_size=self.hparams.batch_size,
@@ -3125,7 +3129,7 @@ class PPO_Agent5(LightningModule):
         self.loop = asyncio.get_running_loop()
         self.ctrl = ctrl
         self.networkGraph = self.ctrl.networkGraph
-        self.obs_cols = ['port', 'intftypeval', 'datatypeval', 'distance', 'denisty', 'alinks', 'flinks', 'x', 'y', 'z', 'batt', 'delay', 'throughput', 'engcons', \
+        self.obs_cols = ['port', 'intftypeval', 'datatypeval', 'distance', 'denisty', 'alinks', 'flinks', 'x', 'y', 'z', 'batt', 'delay', 'throughput', \
         'txpackets_val', 'txbytes_val', 'rxpackets_val', 'rxbytes_val', 'drpackets_val', 'txpacketsin_val', 'txbytesin_val', 'rxpacketsout_val', 'rxbytesout_val', 'rptti'] 
         self.cal_cols = ['ts', 'batt_var', 'rptti_mean']
         self.action_cols = ['batt', 'txpackets_val', 'txbytes_val', 'rxpackets_val', 'rxbytes_val']
@@ -3299,8 +3303,8 @@ class PPO_Agent5(LightningModule):
         returns = [0]
         delay = [0]
         throughput = [0]
-        engcons = [0]
         drpackets = [0]
+        energy = [0]
         txpackets = [0]
         rxpackets = [0]
         rxpacketsout = [0]
@@ -3328,7 +3332,7 @@ class PPO_Agent5(LightningModule):
             returns.append(reward.sum())
             delay.append(rev_nxt_obs['delay'].mean())
             throughput.append(rev_nxt_obs['throughput'].mean() )
-            engcons.append(rev_nxt_obs['engcons'].mean() )
+            throughput.append(rev_nxt_obs['batt'].mean() )
             drpackets.append(rev_nxt_obs['drpackets_val'].sum() )
             txpackets.append(rev_nxt_obs['txpackets_val'].sum() )
             rxpackets.append(rev_nxt_obs['rxpackets_val'].sum() )
@@ -3361,8 +3365,8 @@ class PPO_Agent5(LightningModule):
                 'TH': rev_nxt_obs['throughput'].mean() 
                 }, global_step=self.ep_step
             )
-            self.tb_logger.add_scalars('Episode/Energy_Consumption', {
-                'EC': rev_nxt_obs['engcons'].mean()
+            self.tb_logger.add_scalars('Episode/Energy', {
+                'EN': rev_nxt_obs['batt'].mean()
                 }, global_step=self.ep_step
             )
             self.tb_logger.add_scalars('Episode/Dropped_Packets', {
@@ -3412,8 +3416,8 @@ class PPO_Agent5(LightningModule):
             'TH': np.array(throughput).mean() 
             }, global_step=self.ep_step
         )
-        self.tb_logger.add_scalars('Epoch/Energy_Consumption', {
-            'EC': np.array(engcons).mean()
+        self.tb_logger.add_scalars('Epoch/Energy', {
+            'EC': np.array(energy).mean()
             }, global_step=self.ep_step
         )
         self.tb_logger.add_scalars('Epoch/Dropped_Packets', {
@@ -4351,7 +4355,6 @@ class TFT_Agent(LightningModule):
         self.ep_entropy = []
         delay = []
         throughput = []
-        engcons = []
         droppackets = []
         resenergy = []
         returns = [0]
@@ -4364,7 +4367,7 @@ class TFT_Agent(LightningModule):
         # train.drop(columns=train.columns[0], axis=1, inplace=True)
         train = train.astype({'time_idx':'int', 'id':'str', 'port':'float', 'intftypeval':'float', 'datatypeval':'float', 'distance':'float', \
             'denisty':'float', 'alinks':'float', 'flinks':'float', 'x':'float', 'y':'float', 'z':'float', 'batt':'float', 'delay':'float', \
-            'throughput':'float', 'engcons':'float', 'txpackets_val':'float', 'txbytes_val':'float', 'rxpackets_val':'float', 'rxbytes_val':'float', \
+            'throughput':'float', 'txpackets_val':'float', 'txbytes_val':'float', 'rxpackets_val':'float', 'rxbytes_val':'float', \
             'drpackets_val':'float', 'txpacketsin_val':'float', 'txbytesin_val':'float', 'rxpacketsout_val':'float', 'rxbytesout_val':'float'})
         max_prediction_length = self.env.prd_time
         max_encoder_length = train.env.obs_time
@@ -4389,7 +4392,7 @@ class TFT_Agent(LightningModule):
             time_varying_known_categoricals=[],
             time_varying_unknown_categoricals=[],
             time_varying_known_reals=['time_idx'],
-            time_varying_unknown_reals=['distance', 'denisty', 'alinks', 'flinks', 'x', 'y', 'z', 'batt', 'delay', 'throughput', 'engcons', 'txpackets_val', 'txbytes_val', 'rxpackets_val', 'rxbytes_val', 'drpackets_val', 'txpacketsin_val', 'txbytesin_val', 'rxpacketsout_val', 'rxbytesout_val'],
+            time_varying_unknown_reals=['distance', 'denisty', 'alinks', 'flinks', 'x', 'y', 'z', 'batt', 'delay', 'throughput', 'txpackets_val', 'txbytes_val', 'rxpackets_val', 'rxbytes_val', 'drpackets_val', 'txpacketsin_val', 'txbytesin_val', 'rxpacketsout_val', 'rxbytesout_val'],
             # target_normalizer=MultiNormalizer([EncoderNormalizer(), TorchNormalizer()]),
             target_normalizer=GroupNormalizer(
                 groups=['id', 'port', 'intftypeval', 'datatypeval'], transformation="softplus"
@@ -4725,7 +4728,7 @@ class TFT_Agent(LightningModule):
         # train.drop(columns=train.columns[0], axis=1, inplace=True)
         train = train.astype({'time_idx':'int', 'id':'str', 'port':'float', 'intftypeval':'float', 'datatypeval':'float', 'distance':'float', \
             'denisty':'float', 'alinks':'float', 'flinks':'float', 'x':'float', 'y':'float', 'z':'float', 'batt':'float', 'delay':'float', \
-            'throughput':'float', 'engcons':'float', 'txpackets_val':'float', 'txbytes_val':'float', 'rxpackets_val':'float', 'rxbytes_val':'float', \
+            'throughput':'float', 'txpackets_val':'float', 'txbytes_val':'float', 'rxpackets_val':'float', 'rxbytes_val':'float', \
             'drpackets_val':'float', 'txpacketsin_val':'float', 'txbytesin_val':'float', 'rxpacketsout_val':'float', 'rxbytesout_val':'float'})
         max_prediction_length = self.env.prd_time
         max_encoder_length = self.env.obs_time
@@ -4751,7 +4754,7 @@ class TFT_Agent(LightningModule):
             time_varying_known_categoricals=[],
             time_varying_unknown_categoricals=[],
             time_varying_known_reals=['time_idx'],
-            time_varying_unknown_reals=['distance', 'denisty', 'alinks', 'flinks', 'x', 'y', 'z', 'batt', 'delay', 'throughput', 'engcons', 'txpackets_val', 'txbytes_val', 'rxpackets_val', 'rxbytes_val', 'drpackets_val', 'txpacketsin_val', 'txbytesin_val', 'rxpacketsout_val', 'rxbytesout_val'],
+            time_varying_unknown_reals=['distance', 'denisty', 'alinks', 'flinks', 'x', 'y', 'z', 'batt', 'delay', 'throughput', 'txpackets_val', 'txbytes_val', 'rxpackets_val', 'rxbytes_val', 'drpackets_val', 'txpacketsin_val', 'txbytesin_val', 'rxpacketsout_val', 'rxbytesout_val'],
             # target_normalizer=MultiNormalizer([EncoderNormalizer(), TorchNormalizer()]),
             target_normalizer=GroupNormalizer(
                 groups=['id', 'port', 'intftypeval', 'datatypeval'], transformation="softplus"

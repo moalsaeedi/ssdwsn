@@ -90,7 +90,7 @@
                 <span>Z</span>
             </div>
             <div class="input-field col s12">
-                <input name="batt" type="range" id="batt" min="0" max="9000000" value="100000" />
+                <input name="batt" type="range" id="batt" min="0" max="9000000" value="5000000" />
                 <span>BATTERY (mC)</span>
            </div>
            <div class="input-field col s3">
@@ -290,7 +290,7 @@
         <div class="col s12 m3"><a>Beacons: </a><a id="nbeacons" class="stats"></a></div>
         <div class="col s12 m3"><a>Packet-In: </a><a id="npacketin" class="stats"></a></div>
         <div class="col s12 m3"><a>Packet-Out: </a><a id="npacketout" class="stats"></a></div>
-        <div class="col s12 m3"><a>EnergyCons. (mC): </a><a id="avgengconsumption" class="stats"></a></div>
+        <div class="col s12 m3"><a>Res-Energy (mC): </a><a id="avgrenergy" class="stats"></a></div>
         <div class="col s12 m3"><a>Delay (ms): </a><a id="avgdelay" class="stats"></a></div>
         <div class="col s12 m3"><a>Throughput (kbit/s): </a><a id="avgthroughput" class="stats"></a></div>
         <!-- <div id="terminal-container"></div> -->
@@ -323,7 +323,7 @@ var delays = {};
 var throughputs = {};
 var avgdelay = 0.0;
 var avgthroughput = 0.0;
-var avgengconsumption = 0.0;
+var avgrenergy = 0.0;
 var tmppath = '';
 var currscale = 0.0;
 var currtrans = [0.0, 0.0];
@@ -629,13 +629,13 @@ socket.on('sr_getstate', function(cb){
         });
     curr_avgenergy = parseFloat(eng_sum/size).toFixed(4);
     if((avgenergy - curr_avgenergy) > 0.0000){
-        avgengconsumption = parseFloat((avgenergy - curr_avgenergy)/(curr_time - state_time)).toFixed(4);
+        avgrenergy = parseFloat((avgenergy - curr_avgenergy)/(curr_time - state_time)).toFixed(4);
     };    
-    data['avgengconsumption'] = avgengconsumption;
+    data['avgrenergy'] = avgrenergy;
 
     $('#avgdelay').text(avgdelay);
     $('#avgthroughput').text(avgthroughput);
-    $('#avgengconsumption').text(avgengconsumption);
+    $('#avgrenergy').text(avgrenergy);
 
     socket.emit('setstate', data);
 });
@@ -643,7 +643,7 @@ socket.on('sr_getstate', function(cb){
 socket.on('sr_showstats', function(data, cb){
     $('#avgdelay').text(data['avgdelay']);
     $('#avgthroughput').text(data['avgthroughput']);
-    $('#avgengconsumption').text(data['avgengcons']);
+    $('#avgrenergy').text(data['avgrenergy']);
 });
 /*
 socket.on('sr_getenergy', function(cb){
@@ -1203,7 +1203,6 @@ $( "#addnodeform" ).on( "submit", function(e) {
     // nd['weight'] = 0.0;
     nd['delay'] = 0.0;
     nd['throughput'] = 0.0;
-    nd['engcons'] = 0.0;
     nd['alinks'] = 0;
     nd['flinks'] = 0;
     nd['txpackets'] = 0;
@@ -1225,15 +1224,20 @@ $( "#addnodeform" ).on( "submit", function(e) {
             theta = Math.random() * 2 * Math.PI;
             pt_x = parseInt(json.x) + r * Math.cos(theta);
             pt_y = parseInt(json.y) + r * Math.sin(theta);
-            // pt_angle = Math.random() * 2 * Math.PI;
-            // pt_radius_sq = Math.random() * radius * radius;
-            // pt_x = Math.sqrt(pt_radius_sq) * Math.cos(pt_angle);
-            // pt_x = pt_x + parseInt(json.x);
-            // pt_y = Math.sqrt(pt_radius_sq) * Math.sin(pt_angle);
-            // pt_y = pt_y + parseInt(json.y);
+
             distance = 0;
             if( i > 1){
                 isfit = false;
+                // d3.values(nodes).forEach(function(aNode){ 
+                //     distance = Math.sqrt( (pt_x - aNode.pos[0])**2 + (pt_y - aNode.pos[1])**2 );
+                //     if((distance < 200) && (distance > 100)){
+                //         isfit = true;
+                //     };
+                //     if(distance <= 100){
+                //         isfit = false;
+                //         return false;
+                //     };
+                // }); 
                 $.each(ndpnts,function(index,value){             
                     distance = Math.sqrt( (pt_x - value[0])**2 + (pt_y - value[1])**2 )
                     if((distance < 100) && (distance > 50)){
@@ -1246,7 +1250,6 @@ $( "#addnodeform" ).on( "submit", function(e) {
                 });
             };
             if(isfit){
-                console.log(distance+'-'+i);
                 ndpnts[i.toString()] = [pt_x,pt_y];
                 nd = {};
                 
@@ -1275,7 +1278,6 @@ $( "#addnodeform" ).on( "submit", function(e) {
                 // nd['weight'] = 0.0;
                 nd['delay'] = 0.0;
                 nd['throughput'] = 0.0;
-                nd['engcons'] = 0.0;
                 nd['alinks'] = 0;
                 nd['flinks'] = 0;
                 nd['txpackets'] = 0;
@@ -1288,7 +1290,7 @@ $( "#addnodeform" ).on( "submit", function(e) {
                 draw();
             };
 
-            if((Date.now() - timestamp) > 50){                
+            if((Date.now() - timestamp) > 5000){                
                 return false;
             }
         };

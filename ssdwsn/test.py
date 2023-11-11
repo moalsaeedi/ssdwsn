@@ -63,6 +63,8 @@ nodes = np.array([['1.0.1'],
 observation_space = np.hstack((nodes, state))
 obs = pd.concat([pd.DataFrame(observation_space, columns=cat_cols+con_cols)], axis=1)
 obs = obs.iloc[:,1:].astype(float)
+print(obs['port'].to_numpy())
+print(obs['port'].to_numpy()[2])
 val = obs['port'].to_numpy().reshape(-1,1)
 val = val/val.max()
 print(val)

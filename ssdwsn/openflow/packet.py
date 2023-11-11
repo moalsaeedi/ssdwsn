@@ -257,7 +257,7 @@ data: can be int[], bytes or object of Packet
 class BeaconPacket(Packet):
     """Beacon Pakcet"""
     def __init__(self, data:bytearray=None, net:int=None, src:Addr=None, dst:Addr=None, distance:int=None, battery:int=None,
-                    pos:tuple=None, intfType:int=None, sensorType:int=None, port:int=None, aggrpayload:bytearray=None):
+                    pos:tuple=None, intfType:int=None, sensorType:int=None, port:int=None):
         """Initiate a beacon packet
 
         Args:
@@ -283,8 +283,6 @@ class BeaconPacket(Packet):
             self.setIntfType(intfType)    
             self.setSensorType(sensorType)        
             self.setPort(port)
-            if aggrpayload:
-                self.setPayloadFromTo(aggrpayload, 0, self.getPayloadSize(), len(aggrpayload))
     
     def getPosition(self):
         val = int.from_bytes(self.getPayloadFromTo(ct.POS_INDEX, ct.POS_INDEX + ct.POS_LEN), 'big', signed=False)
@@ -339,16 +337,6 @@ class BeaconPacket(Packet):
     def setBattery(self, val:int):
         self.setPayloadFromTo(bitsToBytes('{0:b}'.format(val).zfill(8*ct.BATT_LEN)), 0, ct.BATT_INDEX, ct.BATT_LEN)
         return self
-    
-    def hasAggrConfPayload(self):
-        return bool(self.getPayloadSize() > ct.BEACON_HDR_LEN)
-
-    def getAggrConfPayload(self):
-        return self.getPayloadFromTo(ct.BEACON_HDR_LEN, self.getPayloadSize())
-
-    def getAggrConfig(self):
-        payload = self.getPayloadFromTo(ct.BEACON_HDR_LEN, self.getPayloadSize())
-        return {'dist':payload[0], 'dst':Addr(payload[1:3])}
 
 class ConfigProperty(Enum):
     
@@ -736,7 +724,7 @@ class ReportPacket(BeaconPacket):
     #         self.setPayloadValue(ct.NEIGH_INDEX + 4 + i_node * ct.NEIGH_LEN, val)
     #     else: warn("Index exceeds max number of neighbors")   
 
-    def getAggrPayload(self, prvpacket):
+    async def getAggrPayload(self, prvpacket):
         # print('prvpacket: \n') 
         # print(' '.join(format(i, '08b') for i in prvpacket)) 
         # print('\n')

@@ -26,7 +26,7 @@ from ssdwsn.util.utils import getColorInt, getColorVal
 class Neighbor:
     """Neigbor Node Information Object"""
     # def __init__(self, addr:Addr=None, rssi:int=None, batt:int=None, port:int=None, color:str=None):
-    def __init__(self, dist:float, addr:Addr=None,  rssi:int=None, port:int=None, tosinkdist:int=None, toaggrdist:int=None):
+    def __init__(self, dist:float, addr:Addr=None,  rssi:int=None, port:int=None, tosinkdist:int=None):
         """Generate neighbor node information object
 
         Args:
@@ -35,14 +35,12 @@ class Neighbor:
             batt (int, optional): battery charging level of the neigbor node. Defaults to None.
             port (int, optional): port address of the neigbor node. Defaults to None.
             tosinkdist (int, optional): Distance (number of hops) to the neariest sink. Defaults to None.
-            toaggrdist (int, optional): Distance (number of hops) to the neariest cluster head. Defaults to None.
         """
         self.dist = dist
         self.addr = Addr(ct.BROADCAST_ADDR) if addr is None else addr
         self.rssi = int(ct.DEFAULT) if rssi is None else rssi
         self.port = port # tuple (Address, port)
         self.tosinkdist = ct.DIST_MAX + 1 if tosinkdist is None else tosinkdist
-        self.toaggrdist = ct.DIST_AGGR_MAX + 1 if toaggrdist is None else toaggrdist
         # self.color = color # default is black
     
     def getDist(self):
@@ -59,12 +57,9 @@ class Neighbor:
     
     def getToSinkDist(self):
         return self.tosinkdist
-    
-    def getToAggrDist(self):
-        return self.toaggrdist
 
     def __str__(self) -> str:
-        return f'Dist: {self.dist} Addr: {self.addr.__str__()} RSSI: {self.rssi} Port: {self.port} ToSinkDist: {self.tosinkdist} ToAggrDist: {self.toaggrdist}'
+        return f'Dist: {self.dist} Addr: {self.addr.__str__()} RSSI: {self.rssi} Port: {self.port} ToSinkDist: {self.tosinkdist}'
     # def getColorInt(self):
     #     return getColorInt(self.color)
 

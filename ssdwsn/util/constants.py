@@ -83,7 +83,6 @@ class Constants:
     AGGR = 8    
     TTL_MAX = 100 # packets max time to live value (number of hops)  
     DIST_MAX = 100 # max distance (number of hops) to the sink
-    DIST_AGGR_MAX = 100
     THRES = 63
     SIM_TIME = 3600
     # Transmission Time Intervals (Data TTI, Report TTI, Beacon TTI)
@@ -220,8 +219,8 @@ class Constants:
     FD_SIZE = 2
     
     # DRL Agent Actions Constants
-    DRL_CH_INDEX = 1
-    DRL_CH_LEN = 1
+    DRL_AG_INDEX = 1
+    DRL_AG_LEN = 1
     DRL_NH_INDEX = 2
     DRL_NH_LEN = 2
     DRL_RT_INDEX = 3
@@ -296,13 +295,19 @@ class Constants:
     # Battery 2X AA batteries Attached pack
     # External Power 2.7 V - 3.3 V Molex connector provided
     MAX_LEVEL = 9000000 # in Millicoulomb (mC)
-    KEEP_ALIVE = 0.02 # mC spent every 1 sec (Idle mode)
-    KEEP_SLEEP = 0.001 # mC spent every 1 sec (Sleep mode)
-    RADIO_TX = 17.4 # mC spent every 1 sec
-    RADIO_RX = 19.7 # mC spent every 1 sec
-    BATT_LEVEL = 100000 # default simulation initial energy
-    MAX_ENRCONS = 2 * RADIO_RX # maximum energy consumption every 1 sec
+    KEEP_ALIVE = 8 # mC spent every 1 sec (Mote Active mode)
+    KEEP_SLEEP = 0.015 # mC spent every 1 sec (Mote Sleep mode)
+    RADIO_TX = 17.4 # mC spent every 1 sec (Radio Tx per second)
+    RADIO_RX = 19.7 # mC spent every 1 sec (Radio Rx per second)
+    BATT_LEVEL = 5000000 # default simulation initial energy
+    MAX_ENRCONS = 5 * RADIO_RX # maximum energy consumption every 1 sec
     # 50000 mC energy, which is 50000 * 1.5 = 75000 mJ (75000/9000000 = 0.0083% mJ remaining energy of 1 AA battery)
+    # The energy consumption can be calculated in Joules as follows:
+
+    # Transmit-Energy-Consumed = Transmit-Current * Voltage * Time-for-which-node-transmits-packets
+    # Receive-Energy-Consumed = Receive-Current * Voltage * Time -for-which-node-receives-packets
+    # IdleMode-Energy-Consumed = IdleMode-Current * Voltage * Time-in-Idle-Mode
+    # SleepMode-Energy-Consumed = SleepMode-Current * Voltage * Time-in-sleep-mode
     # Neighbor Constants
     DEFAULT = 0xFF
     

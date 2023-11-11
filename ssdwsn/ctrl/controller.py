@@ -132,7 +132,7 @@ class Controller:
         self.buffer = {}
         self.buffer_size = 1
         self.perf_buffer = {}
-        self.perf_buffer_size = 10
+        self.perf_buffer_size = 5
 
     async def terminatef(self):
         logger.warn(f'CONTROLLER {self.id} has been terminated ...')
@@ -572,7 +572,7 @@ class Controller:
                         data = {
                             'avgdelay':round(state_mean[1], 4), 
                             'avgthroughput':round(state_mean[2], 4), 
-                            'avgengcons':round(state_mean[3], 4)
+                            'avgrenergy':round(state_mean[0], 4)
                             }
                         await self.emitStats('showstats', data)
         asyncio.run(async_thread())
@@ -649,11 +649,13 @@ class Controller:
         cp = ConfigPacket(net=net, src=sinkAddr, dst=dst, write=ConfigProperty.IS_AGGR, val=int(newVal).to_bytes(1, 'big'), path=path)   
         await self.sendNetworkPacket(cp, sinkId, sinkAddr)
         
-    async def setDRLAction(self, net:int, sinkId:str, sinkAddr:Addr, dst:Addr, newVal:bytearray, path:list):
+    def setDRLAction(self, net:int, sinkId:str, sinkAddr:Addr, dst:Addr, newVal:bytearray, path:list):
         """send a CONFIG packet to set a Node as an aggregation header
-        """    
-        cp = ConfigPacket(net=net, src=sinkAddr, dst=dst, write=ConfigProperty.DRL_ACTION, val=newVal, path=path)   
-        await self.sendNetworkPacket(cp, sinkId, sinkAddr)
+        """  
+        async def async_thread():
+            cp = ConfigPacket(net=net, src=sinkAddr, dst=dst, write=ConfigProperty.DRL_ACTION, val=newVal, path=path)   
+            await self.sendNetworkPacket(cp, sinkId, sinkAddr)
+        asyncio.run(async_thread())
         
     async def sendPath(self, net:int, sinkId:str, sinkAddr:Addr, src:Addr, dst:Addr, path:list):
         """send a OPEN_PATH packet to configure flow rules along a routing path
@@ -1195,7 +1197,7 @@ class CtrlLinkPred(Controller):
             self.rt = self.ctrl.routingApp(self.networkGraph.getGraph(), self.networkGraph.getLastModification())  
             self.scaler = StandardScaler()
             # self.loop = asyncio.get_event_loop()
-            self.obs_cols = ['batt', 'delay', 'throughput', 'engcons', 'distance', 'denisty', 'txpackets', 'txbytes', 'rxpackets',
+            self.obs_cols = ['batt', 'delay', 'throughput', 'distance', 'denisty', 'txpackets', 'txbytes', 'rxpackets',
             'rxbytes', 'drpackets', 'alinks', 'flinks', 'battvar']
             self.action_cols = ['lweight']
             self.observation_space = np.zeros((1, len(self.obs_cols)))
@@ -1216,7 +1218,6 @@ class CtrlLinkPred(Controller):
             self.reward_history = []
             self.delay_history = []
             self.throughput_history = []
-            self.energycons_history = []
             self.energyvar_history = [] 
             self.txpackets_history = []
             self.txbytes_history = []
@@ -1232,7 +1233,7 @@ class CtrlLinkPred(Controller):
         def getObs(self, nds=None):
             """Get current network state"""
 
-            '''['batt', 'delay', 'throughput', 'engcons', 'distance', 'denisty', 'txpackets', 'txbytes', 'rxpackets', \
+            '''['batt', 'delay', 'throughput', 'distance', 'denisty', 'txpackets', 'txbytes', 'rxpackets', \
             'rxbytes', 'drpackets', 'alinks', 'flinks', 'x', 'y', 'z', 'intftypeval', 'datatypeval']'''
             state, nodes = self.networkGraph.getState(nds)
             # states = self.scaler.fit_transform(states)
@@ -1262,8 +1263,6 @@ class CtrlLinkPred(Controller):
             prv_throughput = prv_obs[:,2]
             delay =  obs[:,1]
             prv_delay =  prv_obs[:,1]
-            engcons =  obs[:,3]
-            prv_engcons =  prv_obs[:,3]
             txpackets =  obs[:,6]
             prv_txpackets =  prv_obs[:,6]
             txbytes =  obs[:,7]
@@ -1279,7 +1278,7 @@ class CtrlLinkPred(Controller):
             # R = ((throughput-prv_throughput)+(prv_delay-delay)+(prv_engcons-engcons))
             # R = ((throughput > prv_throughput).astype(float) + (delay < prv_delay).astype(float) + (engcons < prv_engcons).astype(float)**2)
             # R = np.where(throughput > prv_throughput, 1, -100).astype(float) + np.where(delay < prv_delay, 1, -100).astype(float) + np.where(engcons < prv_engcons, 1, -100).astype(float)
-            R = np.where(throughput > prv_throughput, 1, 0).astype(float) + np.where(delay < prv_delay, 1, 0).astype(float) + np.where(engcons < prv_engcons, 1, 0).astype(float) + np.where(battvar < prv_battvar, 1, 0).astype(float) + np.where(drpackets < prv_drpackets, 1, 0).astype(float)
+            R = np.where(throughput > prv_throughput, 1, 0).astype(float) + np.where(delay < prv_delay, 1, 0).astype(float) + np.where(battvar < prv_battvar, 1, 0).astype(float) + np.where(drpackets < prv_drpackets, 1, 0).astype(float)
             # R = np.where(engcons < prv_engcons, 1, -zero_division(engcons, prv_engcons)).astype(float) + np.where(battstd < prv_battstd, 1, -zero_division(battstd, prv_battstd)).astype(float) + np.where(drpackets < prv_drpackets, 1, -zero_division(drpackets, prv_drpackets)).astype(float)
             # R = ((1/(delay+engcons+battvar+drpackets)) - 1) / throughput
             # R = throughput/ (delay+engcons+battvar+drpackets)
@@ -1401,7 +1400,7 @@ class DutySchedulerCtrl(Controller):
     def ctrlLearningWorker(self):
         async def async_thread():
             # run the RL model after 60 seconds of initiating the network simulation (discovery phase)
-            await asyncio.sleep(60)
+            await asyncio.sleep(300)
             # run the blocking ML code in separate thread (make sync code as (awaitable) async code)
             
             from ssdwsn.app.agent import SAC_Agent, A2C_Agent, SAC_Agent_, SAC_Agent__, TD3_Agent, PPO_Agent, PPO_Agent1, PPO_Agent2, PPO_Agent3, PPO_Agent4, PPO_Agent5, REINFORCE_Agent, PPO_GAE_Agent, PPO_MultiAgent
