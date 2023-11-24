@@ -24,6 +24,7 @@ from multiprocessing import Process, parent_process, set_start_method
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from subprocess import Popen, PIPE, run, check_output
 from os import environ, kill, getpid, path, cpu_count
+import traceback
 import time
 import re
 from random import randint
@@ -182,7 +183,7 @@ class Node:
 
             await self.connect()
         except Exception as e:
-            logger.error(e)
+            logger.error(traceback.format_exc())
             self.ready = False
         finally:
             # await self.terminatef()
@@ -1205,7 +1206,7 @@ class Node:
             idletimeout = value.getStats().getIdle()
             if idletimeout != ct.RL_IDLE_PERM:
                 if idletimeout >= 1:
-                    value.getStats().decrementIdle(int(span_time))
+                    value.getStats().decrementIdle(abs(int(span_time)))
                 else:
                     remvList.append(item)
         for item in remvList:

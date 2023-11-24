@@ -1,0 +1,23 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: >-
+  Scalable Software-Defined Wireless Sensor Networks
+  (SSDWSN) - A Simulator
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Mohammed
+    family-names: Alsaeedi
+    email: mosaeediom@gmail.com
+    affiliation: >-
+      School of Computing, Faculty of Engineering,
+      Universiti Teknologi Malaysia
+    orcid: 'https://orcid.org/0000-0003-4508-9187'
+repository-code: 'https://github.com/moalsaeedi/ssdwsn'
+license: AGPL-3.0-or-later
+version: 1.0.0
+date-released: '2023-11-25'

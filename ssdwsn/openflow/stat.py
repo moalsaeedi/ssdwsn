@@ -134,7 +134,9 @@ class Stat(object):
             self.setIdle(ct.RL_IDLE)
 
     def decrementIdle(self, val:int):
-        self.setIdle(self.getIdle() - val)
+        setval = self.getIdle() - val
+        setval = 0 if setval <= 0 else setval
+        self.setIdle(setval)
         
     def toByteArray(self):
         return self.stats

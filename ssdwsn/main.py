@@ -38,7 +38,7 @@ from ssdwsn.data.node import Mote, Sink
 from ssdwsn.data.addr import Addr
 # from ssdwsn.util.log import info, error, debug, output, warn
 from ssdwsn.ctrl.graph import Graph
-from ssdwsn.ctrl.controller import CtrlDijkstra, CtrlFullRoutePred, CtrlNextHopPred, CtrlFlowRulesPred, CtrlLinkPred, DutySchedulerCtrl,StatePredCtrl
+from ssdwsn.ctrl.controller import ATCP_ctrl, NSFP_ctrl
 from ssdwsn.util.constants import Constants as ct
 from ssdwsn.util.utils import CustomFormatter, customClass, mapRSSI, runCmd
 from ssdwsn.data.neighbor import Neighbor
@@ -121,13 +121,8 @@ SINKS = {'sink':Sink,
 }
 
 CONTROLLERS = {
-    'dijkstra-ctrl': CtrlDijkstra,
-    'NextHopPred-ctrl': CtrlNextHopPred,
-    'FullRoutePred-ctrl': CtrlFullRoutePred,
-    'FlowRulesPred-ctrl': CtrlFlowRulesPred,
-    'LinkPred-ctrl': CtrlLinkPred,
-    'DutyScheduler-ctrl': DutySchedulerCtrl,
-    'StatePred-ctrl': StatePredCtrl
+    'NSFP-ctrl': NSFP_ctrl,
+    'ATCP-ctrl': ATCP_ctrl
 }
 SENSORS = {
     'temperature': Temperature, 

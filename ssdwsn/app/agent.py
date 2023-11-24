@@ -28,7 +28,7 @@ from ssdwsn.util.utils import quietRun, CustomFormatter
 from ssdwsn.app.lossFunction import lossBCE, lossCCE, lossMSE
 from app.utilts import polyak_average
 from ssdwsn.app.dataset import RLDataset_A2C, RLDataset_A2C_Shuffle, RLDataset_SAC, RLDataset_SAC_Shuffle, RLDataset_PPO, RLDataset_PPO_shuffle, RLDataset_GAE, RLDataset_GAE_shuffle, ExperienceSourceDataset
-from ssdwsn.app.network import SAC_DQN, A2C_DQN, HE_DQN, CriticNetwork, A2C_GradientPolicy, ActorNetwork, ValueNetwork, SAC_GradientPolicy, HE_GradientPolicy, TD3_DQN, TD3_GredientPolicy, LSTM, Transformer, PPO_GradientPolicy, PPO_Policy, PPO_ValueNet, SelfAttention, A2C_ValueNet, REINFORCE_GradientPolicy
+from ssdwsn.app.network import SAC_DQN, A2C_DQN, HE_DQN, CriticNetwork, A2C_GradientPolicy, ActorNetwork, ValueNetwork, SAC_GradientPolicy, HE_GradientPolicy, TD3_DQN, TD3_GredientPolicy, LSTM, Transformer, PPO_GradientPolicy, PPO_Policy, PPO_ValueNet, PPO_Policy_Pred, PPO_ValueNet_Pred, SelfAttention, A2C_ValueNet, REINFORCE_GradientPolicy
 from torchmetrics import MeanSquaredError, R2Score
 from torch.optim import Adam, AdamW, SGD, LBFGS
 from torch.optim.optimizer import Optimizer
@@ -2685,8 +2685,8 @@ class PPO_Agent3(LightningModule):
         self.play_episodes()
         trainer.fit(self) 
 
-class PPO_Agent4(LightningModule):
-    """ 
+class PPO_ATCP(LightningModule):
+    """ Adaptive Traffic Controll On-Policy PPO_DRL Agent
     """
     def __init__(self, ctrl, num_envs=50, batch_size=2, nb_optim_iters=4, hidden_size=256, samples_per_epoch=2,
                 epoch_repeat=4, policy_lr=1e-4, value_lr=1e-3, gamma=0.99, epsilon=0.3, entropy_coef=0.1,
@@ -2770,54 +2770,54 @@ class PPO_Agent4(LightningModule):
         # isaggr_idxs = np.where((obs[:,0]<(obs[:,0].max()*action[:,0]+obs[:,0].max()*action[:,0]*0.25)) & (obs[:,0]>(obs[:,0].max()*action[:,0]-obs[:,0].max()*action[:,0]*0.25)) &
         #                        (obs[:,5]<(obs[:,5].max()*action[:,1]+obs[:,5].max()*action[:,1]*0.25)) & (obs[:,5]>(obs[:,5].max()*action[:,1]-obs[:,5].max()*action[:,1]*0.25)))
         isaggr_action_nodes = obs_nds[isaggr_idxs,:].flatten().tolist()
-        try:
-            for nd, act in act_nds.items():
-                neighbors = [edge[1] for edge in list(self.networkGraph.getGraph().edges(nbunch=nd, data=True, keys=True))]
-                nd_pos = self.networkGraph.getPosition(nd)
-                act_angle = act[1] * pi # angle between 0 and π radians
-                act_nxh_node = nd
-                act_nxh_value = pi
-                for nr in neighbors:
-                    src_dist = self.networkGraph.getDistance(nd)
-                    dst_dist = self.networkGraph.getDistance(nr)
-                    nd_nr_edge = self.networkGraph.getEdge(nd, nr)
-                    nr_pos = self.networkGraph.getPosition(nr)
-                    y = nr_pos[1] - nd_pos[1]
-                    x = nr_pos[0] - nd_pos[0]
-                    angle = atan2(y, x)
-                    angle = angle if angle > 0 else (angle + (2*pi))
-                    vl = abs(act_angle - angle)
-                    if vl < act_nxh_value and src_dist > dst_dist:
-                        act_nxh_node = nr
+        # try:
+        for nd, act in act_nds.items():
+            neighbors = [edge[1] for edge in list(self.networkGraph.getGraph().edges(nbunch=nd, data=True, keys=True))]
+            nd_pos = self.networkGraph.getPosition(nd)
+            act_angle = act[1] * pi # angle between 0 and π radians
+            act_nxh_node = nd
+            act_nxh_value = pi
+            for nr in neighbors:
+                src_dist = self.networkGraph.getDistance(nd)
+                dst_dist = self.networkGraph.getDistance(nr)
+                nd_nr_edge = self.networkGraph.getEdge(nd, nr)
+                nr_pos = self.networkGraph.getPosition(nr)
+                y = nr_pos[1] - nd_pos[1]
+                x = nr_pos[0] - nd_pos[0]
+                angle = atan2(y, x)
+                angle = angle if angle > 0 else (angle + (2*pi))
+                vl = abs(act_angle - angle)
+                if vl < act_nxh_value and src_dist > dst_dist:
+                    act_nxh_node = nr
 
-                # action value
-                val = int.to_bytes(ct.DRL_AG_INDEX, 1, 'big', signed=False)+int.to_bytes(1 if nd in isaggr_action_nodes else 0, ct.DRL_AG_LEN, 'big', signed=False)+\
-                    int.to_bytes(ct.DRL_NH_INDEX, 1, 'big', signed=False)+int.to_bytes(Addr(re.sub(r'^.*?.', '', act_nxh_node)[1:]).intValue(), ct.DRL_NH_LEN, 'big', signed=False)+\
-                    int.to_bytes(ct.DRL_RT_INDEX, 1, 'big', signed=False)+int.to_bytes(int(act[2] * (ct.MAX_RP_TTI-ct.MIN_RP_TTI))+ct.MIN_RP_TTI, ct.DRL_RT_LEN, 'big', signed=False)
+            # action value
+            val = int.to_bytes(ct.DRL_AG_INDEX, 1, 'big', signed=False)+int.to_bytes(1 if nd in isaggr_action_nodes else 0, ct.DRL_AG_LEN, 'big', signed=False)+\
+                int.to_bytes(ct.DRL_NH_INDEX, 1, 'big', signed=False)+int.to_bytes(Addr(re.sub(r'^.*?.', '', act_nxh_node)[1:]).intValue(), ct.DRL_NH_LEN, 'big', signed=False)+\
+                int.to_bytes(ct.DRL_RT_INDEX, 1, 'big', signed=False)+int.to_bytes(int(act[2] * (ct.MAX_RP_TTI-ct.MIN_RP_TTI))+ct.MIN_RP_TTI, ct.DRL_RT_LEN, 'big', signed=False)
 
-                    # int.to_bytes(ct.DRL_CH_INDEX, 1, 'big', signed=False)+int.to_bytes(1 if nd in isaggr_action_nodes else 0, ct.DRL_CH_LEN, 'big', signed=False)+\
-                    # int.to_bytes(ct.DRL_NH_INDEX, 1, 'big', signed=False)+int.to_bytes(Addr(re.sub(r'^.*?.', '', act_nxh_node)[1:]).intValue(), ct.DRL_NH_LEN, 'big', signed=False)+\
-                    # int.to_bytes(ct.DRL_RT_INDEX, 1, 'big', signed=False)+int.to_bytes(int(act[2] * int((ct.MAX_RP_TTI-ct.MIN_RP_TTI)/ct.MAX_DELAY))*ct.MAX_DELAY + ct.MIN_RP_TTI, ct.DRL_RT_LEN, 'big', signed=False)
-                    # int.to_bytes(ct.DRL_RT_INDEX, 1, 'big', signed=False)+int.to_bytes(int(act[2] * (ct.MAX_RP_TTI-ct.MIN_RP_TTI))+ct.MIN_RP_TTI, ct.DRL_RT_LEN, 'big', signed=False)
-                    # int.to_bytes(ct.DRL_RT_INDEX, 1, 'big', signed=False)+int.to_bytes(int(act[2] * (obs['rptti'].max()-obs['rptti'].min()))+int(obs['rptti'].min()), ct.DRL_RT_LEN, 'big', signed=False)
+                # int.to_bytes(ct.DRL_CH_INDEX, 1, 'big', signed=False)+int.to_bytes(1 if nd in isaggr_action_nodes else 0, ct.DRL_CH_LEN, 'big', signed=False)+\
+                # int.to_bytes(ct.DRL_NH_INDEX, 1, 'big', signed=False)+int.to_bytes(Addr(re.sub(r'^.*?.', '', act_nxh_node)[1:]).intValue(), ct.DRL_NH_LEN, 'big', signed=False)+\
+                # int.to_bytes(ct.DRL_RT_INDEX, 1, 'big', signed=False)+int.to_bytes(int(act[2] * int((ct.MAX_RP_TTI-ct.MIN_RP_TTI)/ct.MAX_DELAY))*ct.MAX_DELAY + ct.MIN_RP_TTI, ct.DRL_RT_LEN, 'big', signed=False)
+                # int.to_bytes(ct.DRL_RT_INDEX, 1, 'big', signed=False)+int.to_bytes(int(act[2] * (ct.MAX_RP_TTI-ct.MIN_RP_TTI))+ct.MIN_RP_TTI, ct.DRL_RT_LEN, 'big', signed=False)
+                # int.to_bytes(ct.DRL_RT_INDEX, 1, 'big', signed=False)+int.to_bytes(int(act[2] * (obs['rptti'].max()-obs['rptti'].min()))+int(obs['rptti'].min()), ct.DRL_RT_LEN, 'big', signed=False)
 
-                # send the action to the data-plane
-                sel_route = []
-                init_len = ct.DIST_MAX + 1
-                sinkId = None
-                for sink in self.ctrl.sinks:
-                    route = nx.shortest_path(self.networkGraph.getGraph(), source=nd, target=sink)
-                    if len(route) < init_len:
-                        sel_route = route
-                        init_len = len(sel_route)
-                        sinkId = sink
+            # send the action to the data-plane
+            sel_route = []
+            init_len = ct.DIST_MAX + 1
+            sinkId = None
+            for sink in self.ctrl.sinks:
+                route = nx.shortest_path(self.networkGraph.getGraph(), source=nd, target=sink)
+                if len(route) < init_len:
+                    sel_route = route
+                    init_len = len(sel_route)
+                    sinkId = sink
 
-                if sel_route:
-                    route = [Addr(re.sub(r'^.*?.', '', x)[1:]) for x in sel_route]
-                    route.reverse()
-                    self.ctrl.setDRLAction(net=int(sinkId.split('.')[0]), sinkId=sinkId, sinkAddr=route[0], dst=route[-1], newVal=val, path=route)
-        except Exception as ex:
-            logger.warn(ex)
+            if sel_route:
+                route = [Addr(re.sub(r'^.*?.', '', x)[1:]) for x in sel_route]
+                route.reverse()
+                self.loop.run_until_complete(self.ctrl.setDRLAction(net=int(sinkId.split('.')[0]), sinkId=sinkId, sinkAddr=route[0], dst=route[-1], newVal=val, path=route))
+        # except Exception as ex:
+        #     logger.warn(ex)
         # '''
 
         time.sleep(15)
@@ -3119,8 +3119,8 @@ class PPO_Agent4(LightningModule):
         self.play_episodes()
         trainer.fit(self)
 
-class PPO_Agent5(LightningModule):
-    """ 
+class PPO_NSFP(LightningModule):
+    """ Network State Forcasting On-Policy PPO_DRL Agent
     """
     def __init__(self, ctrl, num_envs=50, batch_size=2, obs_time = 20, nb_optim_iters=4, hidden_size=256, samples_per_epoch=2,
                 epoch_repeat=4, policy_lr=1e-4, value_lr=1e-3, gamma=0.99, epsilon=0.3, entropy_coef=0.1,
@@ -3131,22 +3131,18 @@ class PPO_Agent5(LightningModule):
         self.networkGraph = self.ctrl.networkGraph
         self.obs_cols = ['port', 'intftypeval', 'datatypeval', 'distance', 'denisty', 'alinks', 'flinks', 'x', 'y', 'z', 'batt', 'delay', 'throughput', \
         'txpackets_val', 'txbytes_val', 'rxpackets_val', 'rxbytes_val', 'drpackets_val', 'txpacketsin_val', 'txbytesin_val', 'rxpacketsout_val', 'rxbytesout_val', 'rptti'] 
-        self.cal_cols = ['ts', 'batt_var', 'rptti_mean']
+        self.cal_cols = ['ts']
         self.action_cols = ['batt', 'txpackets_val', 'txbytes_val', 'rxpackets_val', 'rxbytes_val']
         self.action_space = np.empty((0, len(self.action_cols)))
         self.observation_space = np.empty((0, len(self.obs_cols)+len(self.cal_cols)))
 
         self.obs_dims = self.observation_space.shape[1]
         self.action_dims = self.action_space.shape[1]
-        # self.max_action = self.env.max_action
-        # self.obs_dims = self.env.observation_space.shape[0]
-        # self.action_dims = self.env.action_space.shape[0]
-        # self.max_action = self.env.action_space.high
         self.obs_nds = None
-        self.policy = PPO_Policy(self.obs_dims, hidden_size, self.action_dims)
+        self.policy = PPO_Policy_Pred(self.obs_dims, hidden_size, self.action_dims)
         self.target_policy = copy.deepcopy(self.policy)
         # self.value_net = PPO_Att_ValueNet(self.obs_dims+self.action_dims, hidden_size)
-        self.value_net = PPO_ValueNet(self.obs_dims, hidden_size)
+        self.value_net = PPO_ValueNet_Pred(self.obs_dims, hidden_size)
         self.target_val_net = copy.deepcopy(self.value_net) 
 
         self.buffer = deque(maxlen=samples_per_epoch)
@@ -3155,6 +3151,7 @@ class PPO_Agent5(LightningModule):
         self.ep_policy_loss = []
         self.ep_entropy = []
         self.ep_step = 0
+        self.init_ts = time.time()
         
         self.save_hyperparameters('batch_size', 'obs_time', 'nb_optim_iters', 'policy_lr', 'value_lr', 
             'hidden_size', 'gamma', 'loss_fn', 'optim', 'samples_per_epoch', 'entropy_coef',
@@ -3167,48 +3164,32 @@ class PPO_Agent5(LightningModule):
         _nodes = np.empty((0,1))
         sink_obs = np.empty((0, len(self.obs_cols)))
         _sink_nodes = np.empty((0,1))
-        while obs_time > 0:
+        for _ in range(obs_time):
             state, nodes, sink_state, sink_state_nodes = self.networkGraph.getState(nodes=nds, cols=self.obs_cols)                
-            obs = np.vstack((obs, np.column_stack((state, np.repeat(int(time.time()), state.shape[0], axis=0).reshape(-1,1), np.sqrt(np.square(state[:,10] - state[:,10].mean())).reshape(-1,1), np.repeat(state[:,-1].mean(), state.shape[0], axis=0).reshape(-1,1)))))
+            obs = np.vstack((obs, np.column_stack((state, np.repeat(int(time.time()), state.shape[0], axis=0).reshape(-1,1)))))
             _nodes = np.vstack((_nodes, nodes))
             sink_obs = np.vstack((sink_obs, sink_state))
             _sink_nodes = np.vstack((_sink_nodes, sink_state_nodes))
             nds = nodes
             time.sleep(1)
-            obs_time -= 1
-            # while int(time.time()) - ts < 1:
-            #     continue
-            # obs_time -= (int(time.time()) - ts)
-            # ts = int(time.time())
+
         data = pd.concat([pd.DataFrame(obs, columns=self.obs_cols+self.cal_cols, dtype=float)], axis=1)
         sink_state = pd.DataFrame(sink_obs, columns=self.obs_cols, dtype=float)
         return data, _nodes, sink_state, _sink_nodes
     
     def getReward(self, obs, prv_obs, action):
-        # R = -np.square(prv_obs.get(self.action_cols).to_numpy().max() - action.to_numpy().min()) - \
-        #     -np.square(obs.get(self.action_cols).to_numpy().min() - action.to_numpy().max())
         R = (((action - prv_obs.get(self.action_cols)) * (obs.get(self.action_cols) - action)) / (prv_obs.get(self.action_cols).max())**2).to_numpy().sum(axis=-1, keepdims=True)
-        # R = np.nan_to_num(R, nan=0).mean(axis=-1, keepdims=True)
-        R = np.nan_to_num(R, nan=0)
-        # print(f'R:\n{R}')
-        # R = np.tanh(R)
-        # R = 1 / (1 + np.exp(-R)) # sigmoid
-        # R = np.log(1 + np.exp(-np.abs(R))) + np.maximum(R,0) # softplus
-        # R = 1 / (1 + np.exp(np.log(np.sqrt(np.square(R)))))
-        # R = np.log(1/(1+np.exp(-R)))        
-        # print(f'R size: {R.shape}')
-        # print(f'R:\n{R}')
-        # R = prv_obs['throughput']-prv_obs['delay']-prv_obs['engcons']-prv_obs['drpackets_val']-\
-        #     np.sqrt(np.square(prv_obs['engcons']-np.mean(prv_obs['engcons'])))
-        return R
+        return np.nan_to_num(R, nan=0)
 
     def step(self, action, obs, obs_nds):
         # print(f'ops_nodes\n:{obs_nds}')
         # print(f'action\n:{action}')
         # print(f'obs\n:{obs}')
         # act_nds = dict(zip(obs_nds, action))
-        # action = MinMaxScaler((0,1)).fit_transform(action)
-        action =  obs.get(self.action_cols).to_numpy() + obs.get(self.action_cols).to_numpy() * action
+        act_obs = obs.get(self.action_cols).to_numpy()
+        scaler = MinMaxScaler((0,1)).fit(act_obs)
+        action =  scaler.transform(act_obs) + scaler.transform(act_obs) * action
+        action = scaler.inverse_transform(action)
         nds = np.unique(obs_nds, axis=0)
         for nd in nds.flatten().tolist():
             sel_route = []
@@ -3225,66 +3206,57 @@ class PPO_Agent5(LightningModule):
                 route = [Addr(re.sub(r'^.*?.', '', x)[1:]) for x in sel_route]
                 route.reverse()
                 # '''
-                try:
-                    entry = Entry()
-                    entry.addWindow(Window().setOperator(ct.EQUAL).setSize(ct.W_SIZE_1)
-                        .setLhsOperandType(ct.PACKET).setLhs(ct.DST_INDEX).setRhsOperandType(ct.CONST)
-                        .setRhs(route[0].intValue()))
-                    entry.addWindow(Window().setOperator(ct.EQUAL).setSize(ct.W_SIZE_1)
-                        .setLhsOperandType(ct.PACKET).setLhs(ct.SRC_INDEX).setRhsOperandType(ct.CONST)
-                        .setRhs(route[-1].intValue()))
-                    entry.addWindow(Window.fromString("P.TYP == "+ str(ct.REPORT)))
-                    entry.addAction(DropAction())
-                    entry.getStats().setTtl(int(time.time()))
-                    entry.getStats().setIdle(self.hparams.obs_time)
-                    asyncio.get_running_loop().run_until_complete(self.ctrl.setNodeRule(net=int(sinkId.split('.')[0]), sinkId=sinkId, sinkAddr=route[0], dst=route[-1], newVal=entry, path=route))
-                except Exception as ex:
-                    logger.warn(ex)
+                # try:
+                entry = Entry()
+                entry.addWindow(Window().setOperator(ct.EQUAL).setSize(ct.W_SIZE_1)
+                    .setLhsOperandType(ct.PACKET).setLhs(ct.DST_INDEX).setRhsOperandType(ct.CONST)
+                    .setRhs(route[0].intValue()))
+                entry.addWindow(Window().setOperator(ct.EQUAL).setSize(ct.W_SIZE_1)
+                    .setLhsOperandType(ct.PACKET).setLhs(ct.SRC_INDEX).setRhsOperandType(ct.CONST)
+                    .setRhs(route[-1].intValue()))
+                entry.addWindow(Window.fromString("P.TYP == "+ str(ct.REPORT)))
+                entry.addAction(DropAction())
+                entry.getStats().setTtl(int(time.time()))
+                entry.getStats().setIdle(self.hparams.obs_time)
+                self.loop.run_until_complete(self.ctrl.setNodeRule(net=int(sinkId.split('.')[0]), sinkId=sinkId, sinkAddr=route[0], dst=route[-1], newVal=entry, path=route))
+                # except Exception as ex:
+                #     logger.warn(ex)
 
-        prd_time = self.hparams.obs_time
         obs_tss = obs['ts'].unique().flatten().tolist()# obervation timestamps
         act_tss = np.hstack((obs['ts'].to_numpy().reshape(-1,1), action))
-        i = 0
-        while prd_time > 0:
-            ts = int(time.time())
+        for i in range(self.hparams.obs_time):
             pred_act = pd.DataFrame(act_tss[np.where(act_tss[:,0] == obs_tss[i])[0], 1:], columns=self.action_cols)
-            # print(pred_act)
             state, nodes, _, _ = self.networkGraph.getState(nodes=nds, cols=self.action_cols)                
-            actual_act = pd.DataFrame(obs, columns=self.action_cols)
-            # print(actual_act)
-            self.tb_logger.add_scalars('Episode/Battery', {
-                'Prediction': pred_act['batt'].mean(),
-                'actual':actual_act['batt'].mean()
-                }, global_step=ts
-            )
-            self.tb_logger.add_scalars('Episode/txpackets_val', {
-                'Prediction': pred_act['txpackets_val'].mean(),
-                'actual':actual_act['txpackets_val'].mean()
-                }, global_step=ts
-            )
-            self.tb_logger.add_scalars('Episode/txbytes_val', {
-                'Prediction': pred_act['txbytes_val'].mean(),
-                'actual':actual_act['txbytes_val'].mean()
-                }, global_step=ts
-            )
-            self.tb_logger.add_scalars('Episode/rxpackets_val', {
-                'Prediction': pred_act['rxpackets_val'].mean(),
-                'actual':actual_act['rxpackets_val'].mean()
-                }, global_step=ts
-            )
-            self.tb_logger.add_scalars('Episode/rxbytes_val', {
-                'Prediction': pred_act['rxbytes_val'].mean(),
-                'actual':actual_act['rxbytes_val'].mean()
-                }, global_step=ts
-            )
+            actual_act = pd.DataFrame(state, columns=self.action_cols)
             # set predicted value in ctrl graph
+
+            # print pred vs actual
+            self.tb_logger.add_scalars('Episode/E_Forcast', {
+                'E_pred': pred_act['batt'].mean(),
+                'E_actl':actual_act['batt'].mean()
+                }, global_step= int(time.time() - self.init_ts)
+            )
+            self.tb_logger.add_scalars('Episode/TX_Forcast', {
+                'TX_pred': pred_act['txpackets_val'].mean(),
+                'TX_actl':actual_act['txpackets_val'].mean()
+                }, global_step= int(time.time() - self.init_ts)
+            )
+            self.tb_logger.add_scalars('Episode/TX_bytes_Forcast', {
+                'TX_bytes_pred': pred_act['txbytes_val'].mean(),
+                'TX_bytes_actl':actual_act['txbytes_val'].mean()
+                }, global_step= int(time.time() - self.init_ts)
+            )
+            self.tb_logger.add_scalars('Episode/RX_Forcast', {
+                'RX_pred': pred_act['rxpackets_val'].mean(),
+                'RX_actl':actual_act['rxpackets_val'].mean()
+                }, global_step= int(time.time() - self.init_ts)
+            )
+            self.tb_logger.add_scalars('Episode/RX_bytes_Forcast', {
+                'RX_bytes_pred': pred_act['rxbytes_val'].mean(),
+                'RX_bytes_actl':actual_act['rxbytes_val'].mean()
+                }, global_step= int(time.time() - self.init_ts)
+            )
             time.sleep(1)
-            prd_time -= 1
-            # while int(time.time()) - ts < 1:
-            #     continue
-            # prd_time -= (int(time.time()) - ts)
-            # ts = int(time.time())
-            i += 1
         
         next_obs, _, next_sink_obs, _ = self.reset(nds)            
         reward = self.getReward(next_obs, obs, pd.DataFrame(action, columns=self.action_cols))
@@ -3295,23 +3267,23 @@ class PPO_Agent5(LightningModule):
         info = np.empty((next_obs.shape[0],1), dtype=str)
         return next_obs, reward, done, info, next_sink_obs
         # return next_obs, reward, info 
-
+    
     @T.no_grad()
     def play_episodes(self, policy=None):
         # self.buffer = []
         # self.env.num_samples = 0
-        returns = [0]
-        delay = [0]
-        throughput = [0]
-        drpackets = [0]
-        energy = [0]
-        txpackets = [0]
-        rxpackets = [0]
-        rxpacketsout = [0]
-        txpacketsin = [0]
-        reporttti = [0]
-        enconsvar = [0]
-        reportttivar = [0]
+        # returns = [0]
+        # delay = [0]
+        # throughput = [0]
+        # engcons = [0]
+        # drpackets = [0]
+        # txpackets = [0]
+        # rxpackets = [0]
+        # rxpacketsout = [0]
+        # txpacketsin = [0]
+        # reporttti = [0]
+        # enconsvar = [0]
+        # reportttivar = [0]
         obs, nodes, _, _ = self.reset()
         print('COLLECTING DATA ....')     
         for step in range(self.hparams.samples_per_epoch):
@@ -3323,135 +3295,119 @@ class PPO_Agent5(LightningModule):
             # print(f'action\n{action}')
             # print(f'log_prob\n{log_prob}')
             # done[not done.all()] = True if self.epoch_cntr % self.hparams.samples_per_epoch == 0 else done
-            nxt_obs, reward, done, info, nxt_sink_obs = self.step(action, obs, nodes)
+            nxt_obs, reward, done, info, nxt_sink_obs  = self.step(action, obs, nodes)
             # print(f'obs:{obs.shape} reward: {reward.shape} done: {done.shape} info: {info.shape} nxt_obs: {nxt_obs.shape}')
             self.buffer.append((obs.to_numpy(), log_prob, action, reward, done, nxt_obs.to_numpy()))
             self.num_samples.append(nxt_obs.shape[0])
-            rev_nxt_obs = nxt_obs
+
+            # if reward.sum() > self.best_return:
+            #     self.best_return = reward.sum()
+            #     T.save(self.policy.state_dict(), f'outputs/logs/best_policy')
+            #     T.save(self.value_net.state_dict(), f'outputs/logs/best_value')
+            # else: self.best_return = 0
+
+            # rev_nxt_obs = nxt_obs
             # rev_nxt_obs = self.scaler.inverse_transform(nxt_obs)
-            returns.append(reward.sum())
-            delay.append(rev_nxt_obs['delay'].mean())
-            throughput.append(rev_nxt_obs['throughput'].mean() )
-            throughput.append(rev_nxt_obs['batt'].mean() )
-            drpackets.append(rev_nxt_obs['drpackets_val'].sum() )
-            txpackets.append(rev_nxt_obs['txpackets_val'].sum() )
-            rxpackets.append(rev_nxt_obs['rxpackets_val'].sum() )
-            rxpacketsout.append(rev_nxt_obs['rxpacketsout_val'].sum() )
-            txpacketsin.append(rev_nxt_obs['txpacketsin_val'].sum() )
-            reporttti.append(rev_nxt_obs['rptti'].mean())
-            enconsvar.append(np.sqrt(np.square((rev_nxt_obs['batt'])-np.mean(rev_nxt_obs['batt']))).mean())
-            reportttivar.append(np.sqrt(np.square((rev_nxt_obs['rptti'])-np.mean(rev_nxt_obs['rptti']))).mean())
+            # returns.append(reward.sum())
+            # delay.append(rev_nxt_obs['delay'].mean())
+            # throughput.append(rev_nxt_obs['throughput'].mean() )
+            # engcons.append(rev_nxt_obs['engcons'].mean() )
+            # drpackets.append(rev_nxt_obs['drpackets_val'].sum() )
+            # txpackets.append(rev_nxt_obs['txpackets_val'].sum() )
+            # rxpackets.append(rev_nxt_obs['rxpackets_val'].sum() )
+            # rxpacketsout.append(rev_nxt_obs['rxpacketsout_val'].sum() )
+            # txpacketsin.append(rev_nxt_obs['txpacketsin_val'].sum() )
+            # reporttti.append(rev_nxt_obs['rptti'].mean())
+            # enconsvar.append(np.sqrt(np.square((rev_nxt_obs['batt'])-np.mean(rev_nxt_obs['batt']))).mean())
+            # reportttivar.append(np.sqrt(np.square((rev_nxt_obs['rptti'])-np.mean(rev_nxt_obs['rptti']))).mean())
             # rev_nxt_obs = np.log(np.divide(nxt_obs,1-nxt_obs))
-            pd.concat([pd.DataFrame(nodes, columns=['node']),
-                obs, 
-                pd.DataFrame(action, columns=self.action_cols),
-                nxt_obs, 
-                pd.DataFrame(reward, columns=['reward']),
-                pd.DataFrame(done, columns=['done']),
-                pd.DataFrame(info, columns=['info'])],
-                axis=1).to_csv('outputs/logs/experiences.csv', mode='a', sep='\t', index=False, header=not path.exists('outputs/logs/experiences.csv'))
-                
-            obs = nxt_obs
-
-            self.tb_logger.add_scalars('Episode/Return', {
-                'R': reward.sum()
-                }, global_step=self.ep_step
-            )
-            self.tb_logger.add_scalars('Episode/Delay', {
-                'DE': rev_nxt_obs['delay'].mean()
-                }, global_step=self.ep_step
-            )
-            self.tb_logger.add_scalars('Episode/Throughput', {
-                'TH': rev_nxt_obs['throughput'].mean() 
-                }, global_step=self.ep_step
-            )
-            self.tb_logger.add_scalars('Episode/Energy', {
-                'EN': rev_nxt_obs['batt'].mean()
-                }, global_step=self.ep_step
-            )
-            self.tb_logger.add_scalars('Episode/Dropped_Packets', {
-                'DP': rev_nxt_obs['drpackets_val'].mean()
-                }, global_step=self.ep_step
-            )
-            self.tb_logger.add_scalars('Episode/Tx_Packets', {
-                'TX': rev_nxt_obs['txpackets_val'].mean()
-                }, global_step=self.ep_step
-            )
-            self.tb_logger.add_scalars('Episode/Rx_Packets', {
-                'RX': rev_nxt_obs['rxpackets_val'].mean()
-                }, global_step=self.ep_step
-            )
-            self.tb_logger.add_scalars('Episode/Tx_Packets_In', {
-                'TX_In': nxt_sink_obs['txpacketsin_val'].sum()
-                }, global_step=self.ep_step
-            )
-            self.tb_logger.add_scalars('Episode/Rx_Packets_Out', {
-                'RX_Out': nxt_sink_obs['rxpacketsout_val'].sum()
-                }, global_step=self.ep_step
-            )
-            self.tb_logger.add_scalars('Episode/Report_TTI', {
-                'RT': rev_nxt_obs['rptti'].mean()
-                }, global_step=self.ep_step
-            )
-            self.tb_logger.add_scalars('Episode/Energy_Var', {
-                'E_var': np.sqrt(np.square((rev_nxt_obs['batt'])-np.mean(rev_nxt_obs['batt']))).mean()
-                }, global_step=self.ep_step
-            )
-            self.tb_logger.add_scalars('Episode/Report_TTI_Var', {
-                'RT_var': np.sqrt(np.square((rev_nxt_obs['rptti'])-np.mean(rev_nxt_obs['rptti']))).mean()
-                }, global_step=self.ep_step
-            )
-
+            # pd.concat([pd.DataFrame(nodes, columns=['node']),
+            #     obs, 
+            #     pd.DataFrame(action, columns=self.action_cols),
+            #     nxt_obs, 
+            #     pd.DataFrame(reward, columns=['reward']),
+            #     pd.DataFrame(done, columns=['done']),
+            #     pd.DataFrame(info, columns=['info'])],
+            #     axis=1).to_csv('outputs/logs/experiences.csv', mode='a', sep='\t', index=False, header=not path.exists('outputs/logs/experiences.csv'))
+            self.pltMetrics(reward, nodes, obs, nxt_obs, nxt_sink_obs)    
+            obs = nxt_obs            
             self.ep_step += 1
 
-        self.tb_logger.add_scalars('Epoch/Return', {
-            'R': np.array(returns).sum()
+    def pltMetrics(self, reward, nodes, obs, nxt_obs, nxt_sink_obs):
+        # if self.ep_step == 0 and self.global_step == 0:
+        #     self.tb_logger.add_scalars('Episode/R', {
+        #         'R': np.zeros(1)
+        #         }, global_step=self.ep_step
+        #     )
+        # else:
+        self.tb_logger.add_scalars('Episode/R', {
+            'R': reward.sum()
             }, global_step=self.ep_step
         )
-        self.tb_logger.add_scalars('Epoch/Delay', {
-            'DE': np.array(delay).mean()
+        self.tb_logger.add_scalars('Episode/D', {
+            'D': nxt_obs['delay'].mean()
             }, global_step=self.ep_step
         )
-        self.tb_logger.add_scalars('Epoch/Throughput', {
-            'TH': np.array(throughput).mean() 
+        self.tb_logger.add_scalars('Episode/T', {
+            'T': nxt_obs['throughput'].mean() 
             }, global_step=self.ep_step
         )
-        self.tb_logger.add_scalars('Epoch/Energy', {
-            'EC': np.array(energy).mean()
+        self.tb_logger.add_scalars('Episode/E', {
+            'E': nxt_obs['batt'].mean()
             }, global_step=self.ep_step
         )
-        self.tb_logger.add_scalars('Epoch/Dropped_Packets', {
-            'DP': np.array(drpackets).sum()
+        self.tb_logger.add_scalars('Episode/DP', {
+            'DP': nxt_obs['drpackets_val'].mean()
             }, global_step=self.ep_step
         )
-        self.tb_logger.add_scalars('Epoch/Tx_Packets', {
-            'TX': np.array(txpackets).sum()
+        self.tb_logger.add_scalars('Episode/TX', {
+            'TX': nxt_obs['txpackets_val'].mean()
             }, global_step=self.ep_step
         )
-        self.tb_logger.add_scalars('Epoch/Rx_Packets', {
-            'RX': np.array(rxpackets).sum()
+        self.tb_logger.add_scalars('Episode/RX', {
+            'RX': nxt_obs['rxpackets_val'].mean()
             }, global_step=self.ep_step
         )
-        self.tb_logger.add_scalars('Epoch/Tx_Packets_In', {
-            'TX_In': np.array(txpacketsin).sum()
+        self.tb_logger.add_scalars('Episode/TX_in', {
+            'TX_in': nxt_sink_obs['txpacketsin_val'].mean()
             }, global_step=self.ep_step
         )
-        self.tb_logger.add_scalars('Epoch/Rx_Packets_Out', {
-            'RX_Out': np.array(rxpacketsout).sum()
+        self.tb_logger.add_scalars('Episode/RX_out', {
+            'RX_out': nxt_sink_obs['rxpacketsout_val'].mean()
             }, global_step=self.ep_step
         )
-        self.tb_logger.add_scalars('Epoch/Report_TTI', {
-            'RT': np.array(reporttti).mean()
+        self.tb_logger.add_scalars('Episode/RT', {
+            'RT': nxt_obs['rptti'].mean()
             }, global_step=self.ep_step
         )
-        self.tb_logger.add_scalars('Epoch/Energy_Var', {
-            'E_var': np.array(enconsvar).mean()
+        self.tb_logger.add_scalars('Episode/RT_var', {
+            'RT_var': nxt_obs['rptti'].var()
             }, global_step=self.ep_step
         )
-        self.tb_logger.add_scalars('Epoch/Report_TTI_Var', {
-            'RT_var': np.array(reportttivar).mean()
+        self.tb_logger.add_scalars('Episode/EC', {
+            'EC': ((obs['batt'] - nxt_obs['batt'])/(nxt_obs['ts'] - obs['ts'])).mean()
             }, global_step=self.ep_step
         )
+        self.tb_logger.add_scalars('Episode/EC_var', {
+            'EC_var': ((obs['batt'] - nxt_obs['batt'])/(nxt_obs['ts'] - obs['ts'])).var()
+            }, global_step=self.ep_step
+        )
+        self.tb_logger.add_scalars('Episode/E_nds', 
+            dict([(str(nodes[nd].item()), nxt_obs['batt'].to_numpy()[nd]) for nd in range(nodes.shape[0])]),
+            global_step=self.ep_step
+        )
+        self.tb_logger.add_scalars('Episode/RT_nds', 
+            dict([(str(nodes[nd].item()), nxt_obs['rptti'].to_numpy()[nd]) for nd in range(nodes.shape[0])]),
+            global_step=self.ep_step
+        )
+        # self.tb_logger.add_scalars('Episode/Value/Loss', {
+        #     'Value_Loss': np.array(self.ep_value_loss).mean()
+        #     }, global_step=self.ep_step
+        # )
+        # self.tb_logger.add_scalars('Episode/Policy/Loss', {
+        #     'Policy_Loss': np.array(self.ep_policy_loss).mean()
+        #     }, global_step=self.ep_step
+        # )
 
     def _dataset(self):
         reshape_fn = lambda x: x.reshape(sum(self.num_samples), -1)
@@ -3475,13 +3431,13 @@ class PPO_Agent5(LightningModule):
         policy_opt = self.hparams.optim(self.policy.parameters(), lr=self.hparams.policy_lr)   
         return value_opt, policy_opt
 
-    # def optimizer_step(self, *args, **kwargs):
-    #     """
-    #     Run 'nb_optim_iters' number of iterations of gradient descent on actor and critic
-    #     for each data sample.
-    #     """
-    #     for i in range(self.hparams.nb_optim_iters):
-    #         super().optimizer_step(*args, **kwargs)
+    def optimizer_step(self, *args, **kwargs):
+        """
+        Run 'nb_optim_iters' number of iterations of gradient descent on actor and critic
+        for each data sample.
+        """
+        for i in range(self.hparams.nb_optim_iters):
+            super().optimizer_step(*args, **kwargs)
 
     def train_dataloader(self) -> DataLoader:
         """Initialize the Replay Buffer dataset used for retrieving experiences"""
@@ -3495,30 +3451,31 @@ class PPO_Agent5(LightningModule):
 
     def training_step(self, batch, batch_idx, optimizer_idx):
 
-        obs_b, log_prob_b, action_b, reward_b, done_b, nxt_obs_b = batch
+        obs_b, log_prob_b, action_b, reward_b, done_b, nxt_obs_b = batch        
 
-        # rev_nxt_obs = self.scaler.inverse_transform(T.clone(nxt_obs_b.data).detach().cpu().numpy())
+        # rev_nxt_obs = self.env.scaler.inverse_transform(T.clone(nxt_obs_b.data).detach().cpu().numpy())
         
-        # state_values = self.value_net(T.hstack((obs_b, action_b)))
         state_values = self.value_net(obs_b)
-       
+        # state_values = self.value_net(obs_b)
+
         with T.no_grad():
-            # _, nxt_action = self.target_policy(nxt_obs_b)
-            # nxt_state_values = self.target_val_net(T.hstack((nxt_obs_b, nxt_action)))
+            _, nxt_action = self.target_policy(nxt_obs_b)
             nxt_state_values = self.target_val_net(nxt_obs_b)
-            nxt_state_values[done_b] = 0.0
+            # nxt_state_values = self.target_val_net(nxt_obs_b)
+            # nxt_state_values[done_b] = 0.0 
             target = reward_b + self.hparams.gamma * nxt_state_values
         
         advantages = (target - state_values).detach()
-        # advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
+        advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
 
         if optimizer_idx == 0:
-            loss = self.hparams.loss_fn(state_values.float(), target.float())
-            self.ep_value_loss.append(loss.unsqueeze(0))
+            loss = self.hparams.loss_fn(target.float(), state_values.float())
+            # self.ep_value_loss.append(loss.unsqueeze(0))
             self.tb_logger.add_scalars('Training/Value/Loss', {
                 'loss': loss
                 }, global_step=self.global_step
-            )          
+            )    
+            self.log('value_loss', loss)
             return loss
 
         elif optimizer_idx == 1:
@@ -3529,22 +3486,29 @@ class PPO_Agent5(LightningModule):
             # rho = log_prob / prv_log_prob
 
             surrogate_1 = rho * advantages
-            surrogate_2 = rho.clip(1 - self.hparams.epsilon, 1 + self.hparams.epsilon) * advantages
+            surrogate_2 = T.clip(rho, 1 - self.hparams.epsilon, 1 + self.hparams.epsilon) * advantages
 
-            policy_loss = - T.minimum(surrogate_1, surrogate_2)
-            entropy = -T.sum(action_b*log_prob_b, dim=-1, keepdim=True)
-            loss = (policy_loss - self.hparams.entropy_coef * entropy).mean()
+            loss = - T.minimum(surrogate_1, surrogate_2).mean()
+            # self.ep_policy_loss.append(loss.item())
+            # entropy = -T.sum(action_b*log_prob_b, dim=-1, keepdim=True)
+            # loss = (policy_loss - self.hparams.entropy_coef * entropy).mean()
             self.tb_logger.add_scalars('Training/Policy/Loss', {
-                'loss': policy_loss.mean()
+                'loss': loss
                 }, global_step=self.global_step
-            )       
-            self.tb_logger.add_scalars('Training/Policy/Entropy', {
-                'entropy': entropy.mean()
-                }, global_step=self.global_step
-            )       
+            )
+            # self.tb_logger.add_scalars('Training/Policy/Entropy', {
+            #     'entropy': entropy.mean()
+            #     }, global_step=self.global_step
+            # )
+            self.log('policy_loss', loss)
+            self.log('return', reward_b.sum())
             return loss
                 
     def training_epoch_end(self, training_step_outputs):
+        # if self.best_return > 0:
+        #     self.policy.load_state_dict(T.load('outputs/logs/best_policy'))
+        #     self.value_net.load_state_dict(T.load('outputs/logs/best_value'))
+        
         self.target_val_net.load_state_dict(self.value_net.state_dict())            
         self.target_policy.load_state_dict(self.policy.state_dict())
         print(f'END EPOCH: {self.current_epoch}*****************')
@@ -3563,22 +3527,32 @@ class PPO_Agent5(LightningModule):
 
         # algo = SAC('SAC_CTRL_SSDWSN', lr=1e-3, alpha=0.002, tau=0.1)
         logger.info('START TRAINING ...')
+        # self.tb_logger = SummaryWriter(log_dir="outputs/logs")
         self.tb_logger = SummaryWriter(log_dir="outputs/logs")
         # tb_logger = CSVLogger(save_dir="outputs/logs")
-        checkpoint_callback = ModelCheckpoint(dirpath='outputs/logs')
+        '''
+        checkpoint_callback = ModelCheckpoint(
+            dirpath='outputs/logs',
+            monitor='return',
+            save_top_k=3,
+            filename='model-{epoch:02d}-{return:.2f}',
+            mode='max',
+        )
+        '''
+        # checkpoint_callback = ModelCheckpoint(dirpath='outputs/logs')
+
         trainer = Trainer(
             gpus=num_gpus, 
             max_epochs=-1, #infinite training
             log_every_n_steps=1,
-            callbacks=[checkpoint_callback],
+            # callbacks=[checkpoint_callback],
             # logger=self.tb_logger,
             reload_dataloaders_every_n_epochs = 1,
             # callbacks=[EarlyStopping(monitor='outputs/Q-Loss', mode='min', patience=1000)]
         )
         T.autograd.detect_anomaly(True)
         self.play_episodes()
-        trainer.fit(self) 
-        checkpoint_callback.best_model_path
+        trainer.fit(self)
 
 class PPO_MultiAgent(LightningModule):
     """ 

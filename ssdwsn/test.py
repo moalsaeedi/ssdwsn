@@ -63,6 +63,10 @@ nodes = np.array([['1.0.1'],
 observation_space = np.hstack((nodes, state))
 obs = pd.concat([pd.DataFrame(observation_space, columns=cat_cols+con_cols)], axis=1)
 obs = obs.iloc[:,1:].astype(float)
+pred_act  = pd.DataFrame([])
+for i in range(2):
+    pred_act = pd.concat([pred_act, obs.iloc[:i]], axis=0, ignore_index=True)
+print(pred_act.shape)
 print(obs['port'].to_numpy())
 print(obs['port'].to_numpy()[2])
 val = obs['port'].to_numpy().reshape(-1,1)
