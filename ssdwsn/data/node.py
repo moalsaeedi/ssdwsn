@@ -39,7 +39,6 @@ from ssdwsn.data.addr import Addr
 from ssdwsn.data.neighbor import Neighbor
 from ssdwsn.openflow.packet import Packet
 from ssdwsn.util.constants import Constants as ct
-# from ssdwsn.util.log import warn, info, debug, error, output
 from ssdwsn.openflow.action import Action, ForwardUnicastAction
 from ssdwsn.util.utils import mergeBytes, mapRSSI, compare, Suspendable, CustomFormatter, ipAdd6, runCmd, portToAddrStr, zero_division, getColorVal
 from ssdwsn.openflow.window import Window
@@ -51,7 +50,6 @@ from ssdwsn.data.sensor import SensorType
 from ssdwsn.data.intf import IntfType
 import zmq
 from zmq.asyncio import Context, Poller, ZMQEventLoop
-import asyncio_dgram
 from math import log, sqrt
 import pandas as pd
 from hashlib import md5 
@@ -196,19 +194,6 @@ class Node:
         # WIRELESS RADIO (Transceiver): create a server udp endpoint to communicate with other wireless nodes
         # 1) configure radio transceiver---------------------------------------------------------------------
         self.scope_id = socket.if_nametoindex(self.wintf.name)
-        '''
-        # This is needed to join a multicast group
-        # self.mreq = struct.pack("4sl", socket.inet_aton(self.ip), socket.INADDR_ANY)
-        # Transmitter (client)
-        self.txRadioSocket = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM, 0)
-        self.txRadioSocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        # self.txRadioSocket.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 2)
-        # self.txRadioSocket.setsockopt(socket.SOL_SOCKET, socket.SO_BINDTODEVICE, str(self.wintf.name + '\0').encode('utf-8'))
-        self.txRadioSocket.setblocking(False)
-        # self.txRadioSocket.settimeout(20.0)
-        # self.txRadioSocket.bind(('', self.wintf.port))
-        # Receiver (server)
-        '''
         self.rxRadioSocket = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM, 0)
         self.rxRadioSocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         # self.rxRadioSocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
@@ -225,36 +210,13 @@ class Node:
             socket.SOCK_DGRAM,
             0
         )
-        # print(sockaddr)
-        # self.rxRadioSocket.bind(sockaddr) #(('::1', self.wintf.port))
-        # self.rxRadioSocket.bind(('', self.wintf.port, 0, self.scope_id)) #(('::1', self.wintf.port))
-        # self.rxRadioSocket.bind(('', self.wintf.port, 0, self.scope_id))#(('::1', self.wintf.port))
-        # self.rxRadioSocket.bind(('', self.wintf.port, 0, socket.if_nametoindex(str(self.wintf.name))))#(('::1', self.wintf.port))
-        # self.rxRadioSocket.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, self.mreq)
         
-        # print(self.wintf.ip6.split('/')[0])
-        # self.asyncsocket = await asyncio_dgram.bind((self.wintf.ip6.split('/')[0], self.wintf.port))
-
-        # self.loop.create_task(self.rxRadio())
-
-        # VISUALIZER CONNECTION: Connect and Listen to the visualizer
-        # await self.loop.create_datagram_endpoint(lambda: _EndPointProtocol(self, self.loop), sock=self.rxRadioSocket)
-        # self.trxRadioSocket, protocol = await self.loop.create_datagram_endpoint(lambda: _EndPointProtocol(self, self.loop), local_addr=('::'+'%'+str(self.scope_id), self.wintf.port), family= socket.AF_INET6, allow_broadcast=True)        
-        # self.sock = await self.create_socket(local_addr=('::'+'%'+str(self.scope_id), self.wintf.port), family=socket.AF_INET6, packets_queue_max_size=int(ct.BUFFER_SIZE))
         await asyncio.sleep(1)
-
-        # 2) Configure Controller pub/sub channel-----------------------------------------------------------      
-        
-        
-        
-        
-
-        
-        # 3) Initialize OF protocol configuration and per-node specific parameters----------------------------
+        # 2) Initialize OF protocol configuration and per-node specific parameters----------------------------
         await self.initssdwsn()
         await self.initNeighborTable()
         await asyncio.sleep(20)
-        # 4) Run async workers--------------------------------------------------------------------------------
+        # 3) Run async workers--------------------------------------------------------------------------------
         # ASYNCHRONOUS WORKERS: Create asynchronous workers to handle network flow
         tasks = []
         pool = ThreadPoolExecutor(cpu_count())
@@ -272,18 +234,7 @@ class Node:
         tasks.append(self.loop.run_in_executor(pool, self.beaconWorker))
 
         await asyncio.gather(*tasks)
-    
-    # async def create_socket(self, local_addr=None, remote_addr=None, family=None, packets_queue_max_size=0, reuse_port=None):
-    #     loop = asyncio.get_running_loop()
-    #     transport, protocol = await loop.create_datagram_endpoint(
-    #         lambda: _SocketProtocol(packets_queue_max_size),
-    #         local_addr=local_addr,
-    #         remote_addr=remote_addr,
-    #         family=family,
-    #         reuse_port=reuse_port)
 
-    #     return Socket(transport, protocol)
-   
     async def txpacket(self, packet):
         """puts ready to be sent packets in a transmittion queue
         and decrements the TTL of a packet by one.
@@ -291,15 +242,10 @@ class Node:
         Args:
             packet (_type_): different typs of packets (DATA, OPEN_PATH, REQUEST, RESPONSE, REPORT, BEACON)
         """
-        # async def async_thread():
         packet.decrementTtl()
-        # asyncio.create_task(self.txHandler(packet))
-        # await self.txHandler(packet)
         stts = time.time()
         asyncio.get_running_loop().run_in_executor(None, self.txHandler, packet)
-        # await self.txHandler(packet)
         logger.info(f'txHandler taks: {time.time() - stts}')
-        # asyncio.run(async_thread())
         
     def txHandler(self, packet):
         """transmit the packet over the medium
@@ -314,7 +260,6 @@ class Node:
                     tmpDst = packet.getDst()
                     tmpId = f'{packet.getNet()}.{tmpNxtHop}'
                     srcid = f'{packet.getNet()}.{packet.getSrc()}'
-                    # logger.error(f'txhandler {packet.getNet()} {packet.isAcked()} from {packet.getSrc()} to {tmpId}')
                     if tmpDst.isBroadcast() or tmpNxtHop.isBroadcast():
                         for key, val in self.neighborTable.items():
                             packet.setPrh(self.myAddress)
@@ -331,7 +276,6 @@ class Node:
                                 socket.SOCK_DGRAM,
                                 0, socket.AI_PASSIVE
                             )
-                            # print(sockaddr)    
                             if srcid == self.id:
                                 packet.setTS(round(time.time(), 4))
 
@@ -346,25 +290,13 @@ class Node:
 
                             time.sleep(val.getDist()/1e+8) # propagation Time = distance/speed_of_light
                             time.sleep((len(packet.toByteArray())*0.001*8)/(self.wintf.params['bandwidth'])) # Transmission Time = packet_len/network_bandwidth (250kbit/s)
-                            #Queuing Time + Processing Time (simulation process)
-                            # time.sleep(0.015) # Fixed Additional Delay
-                            # print(self.getIP6FromSeq(self.neighborTable[key].getPort()).split('/')[0])
-                            # self.rxRadioSocket.sendto(packet.toByteArray(), sockaddr) #scope_id can be 0                        
-                            # packet.setTS(round(time.time(), 4))
-                            # self.trxRadioSocket.sendto(packet.toByteArray(), sockaddr) #scope_id can be 0
                             ts1 = time.time()
                             self.sock.sendto(packet.toByteArray(), sockaddr)
                             ts2 = time.time()
-                            # asyncio.get_running_loop().run_in_executor(None, self.txRadio, packet, sockaddr)
-
-                            # await self.asyncsocket.send(packet.toByteArray(), (self.getIP6FromSeq(self.neighborTable[key].getPort()).split('/')[0], self.neighborTable[key].getPort()))
-                            # self.rxRadioSocket.sendto(packet.toByteArray(), ('ff02::1', self.neighborTable[key].getPort(), 0, socket.if_nametoindex('6lowpan-'+str(key))))
                             self.battery.transmitRadio(ts2-ts1)
                             await self.updateStats('tx', packet)
                             logger.info(f'{self.id}-----> Sends Packet type ({packet.getTypeName()}) | {packet.getSrc()} --> {packet.getDst()} - Next Hop({packet.getNxh()})')
                     elif tmpId in self.neighborTable:
-                        # if packet.getType() == ct.BEACON:
-                            # logger.error(f'Packet type ({packet.getTypeName()}) {packet.getSrc()} --> {packet.getDst()} - Next Hop({packet.getNxh()}) {tmpId} is in {self.id} neigbor list')
                         packet.setPrh(self.myAddress)
                         lip6 = check_output(f"ip addr show dev 6lowpan-{str(tmpId)} | grep -B 1 inet6 | sed -ne 's/inet6\([^ ]*\)/\1/p'", shell=True, text=True).strip().split(" ")
                         ((*_, sockaddr),) = socket.getaddrinfo(
@@ -379,7 +311,6 @@ class Node:
                             socket.SOCK_DGRAM,
                             0, socket.AI_PASSIVE
                         )
-                        # logger.error(ni.ifaddresses('6lowpan-'+str(tmpId))[socket.AF_INET6])
                         # if src node set the sending timestamp
                         if srcid == self.id:
                             packet.setTS(round(time.time(), 4))
@@ -395,19 +326,9 @@ class Node:
 
                         time.sleep(self.neighborTable[tmpId].getDist()/1e+8) # propagation Time = distance/speed_of_light
                         time.sleep((len(packet.toByteArray())*0.001*8)/(self.wintf.params['bandwidth'])) # Transmission Time = packet_len/network_bandwidth (250kbit/s)
-                        
-                        # time.sleep(0.015) # Fixed Additional Delay
-                        # print(self.getIP6FromSeq(self.neighborTable[tmpId].getPort()).split('/')[0])
-                        # self.rxRadioSocket.sendto(packet.toByteArray(), sockaddr) #scope_id can be 0
-                        # packet.setTS(round(time.time(), 4))
-                        # self.trxRadioSocket.sendto(packet.toByteArray(), sockaddr) #scope_id can be 0
                         ts1 = time.time()
                         self.sock.sendto(packet.toByteArray(), sockaddr)
                         ts2 = time.time()
-                        # asyncio.get_running_loop().run_in_executor(None, self.txRadio, packet, sockaddr)
-
-                        # await self.asyncsocket.send(packet.toByteArray(), (self.getIP6FromSeq(self.neighborTable[tmpId].getPort()).split('/')[0], self.neighborTable[tmpId].getPort()))
-                        # self.rxRadioSocket.sendto(packet.toByteArray(), ('ff02::1', self.neighborTable[tmpId].getPort(), 0, socket.if_nametoindex('6lowpan-'+str(tmpId))))
                         self.battery.transmitRadio(ts2-ts1) 
                         await self.updateStats('tx', packet)
                         logger.info(f'{self.id}-----> Sends Packet type ({packet.getTypeName()}) | {packet.getSrc()} --> {packet.getDst()} - Next Hop({packet.getNxh()})')
@@ -430,10 +351,6 @@ class Node:
         Engineering Science and Technology, an International Journal. 20. 10.1016/j.jestch.2016.09.008. 
         ----------------------------------------------------
         """
-        # if packet.getType() == ct.CONFIG and packet.getSrc().__str__() == '0.75':
-        #     self.ts1 = time.time()
-        #     self.prv_loc = 'channel'
-        # async def async_thread():
         rssi = ct.RSSI_MAX #default RSSI
         dist = self.wintf.params['antRange'] #default Range
         if packet.isssdwsnPacket():
@@ -451,9 +368,6 @@ class Node:
                 return
             
             try:
-                # if ptype == ct.BEACON or ptype == ct.CONFIG:
-                #     self.rxBQueue.put_nowait(((packet, dist, rssi)))
-                # else:
                 self.ts_dict[send_ts] = recv_ts
                 await self.rxHandler((packet, dist, rssi))
 
@@ -463,16 +377,13 @@ class Node:
                             "delay":delay,
                             "throughput":(len(packet.toByteArray())*0.001*8)/((recv_ts - send_ts))
                         }
-                    # self.stvipub.send(b'ST'+b'perf'+str(json.dumps(data)).encode('utf-8'))
                     self.stats.extend(b'ST'+b'perf'+str(json.dumps(data)).encode('utf-8')+b';')
                 await self.updateStats(rx, packet)
                 logger.info(f'{self.id}<----- Receives Packet type ({packet.getTypeName()}) | {packet.getSrc()} --> {packet.getDst()} and Prev hope is {packet.getPrh()})')
             except Exception as ex:
                 logger.error(ex)
-                # logger.info(f'DROPE IN {self.id} PACKET TYPE ({packet.getTypeName()}) | {packet.getSrc()} --> {packet.getDst()} - Next Hop({packet.getNxh()})')
                 logger.info(f'DROPE IN {self.id} PACKET TYPE ({packet.getTypeName()}) | {packet.getSrc()} --> {packet.getDst()} - Next Hop({packet.getNxh()})')
                 await self.updateStats('drop', packet)
-        # asyncio.run(async_thread())
 
     def checkBatteryWorker(self):
         """check battery charging every one second.
@@ -485,8 +396,6 @@ class Node:
                 ts1 = time.time()
                 if (lambda: self.battery.getLevel())() == 0:
                     logger.warn(f'{self.id} BATTERY is empty...')
-                    # await self.updateNodeColor('black')
-                    # self.stvipub.send(b'ST'+b'NODE'+str(json.dumps({'id':self.id, 'color':'black'})).encode('utf-8'))
                     self.stats.extend(b'ST'+b'NODE'+str(json.dumps({'id':self.id, 'color':'black'})).encode('utf-8')+b';')
                     self.isActive = False
                     break           
@@ -513,10 +422,7 @@ class Node:
                 self.battery.receivedRadio(ts2-ts1)
                 if len(data) >= ct.DFLT_HDR_LEN and len(data) <= ct.MTU:
                     packet = Packet(data)
-                    # if qsize > 0:
-                    #     logger.error(f'Delay of transciever at node {packet.getPrh()} packet_type: {packet.getTypeName()} to node {self.id} is: {(time.time() - packet.getTS())*1000} -- buffer_size: {qsize}')
                     stts = time.time()
-                    # asyncio.get_running_loop().run_in_executor(None, self.rxPacket, Packet(data), round(time.time(), 4))
                     await self.rxPacket(Packet(data), round(time.time(), 4))
                     logger.info(f'rxPacket takes: {time.time() - stts}')
 
@@ -532,18 +438,10 @@ class Node:
                 if self.isActive and self.sinkDistance < ct.DIST_MAX + 1:
                     for key, val in self.neighborTable.items():
                         if val.getToSinkDist() > self.sinkDistance+1:
-                            # logger.error(f'ID:{self.id} Dist: {self.sinkDistance} key:{key} NeighborDist: {val.getToSinkDist()}')
                             await self.sendBeacon(acked=False, dst=Addr(re.sub(r'^.*?.', '', key)[1:]))
-                            # logger.error(f'ID: {self.id} Send: False to {key}')
                     await self.updateLinkColor()
-                # for key, val in self.neighborTable.items():
-                    # logger.error(f'ID: {self.id} Neighbor: {key} {val}')
                 await asyncio.sleep((ct.MAX_BE_TTI - self.betti['value'])/ct.MILLIS_IN_SECOND)
                 logger.info(f'beaconWorker takes: {time.time() - stts}')
-            # while self.ready:
-            #     await asyncio.sleep(self.betti['value']/ct.MILLIS_IN_SECOND)
-            #     await self.sendBeacon(False)
-            #     await asyncio.sleep((ct.MAX_BE_TTI - self.betti['value'])/ct.MILLIS_IN_SECOND)
         asyncio.run(async_thread())
     
     def reportWorker(self):
@@ -559,7 +457,6 @@ class Node:
                     if self.isSink:
                         await self.controllerTx(packet)
                     else:
-                        # self.rxQueue.put_nowait((packet, self.sinkDistance, ct.RSSI_MAX))
                         await self.runFlowMatch(packet)
                 await asyncio.sleep((ct.MAX_RP_TTI - self.rptti['value'])/ct.MILLIS_IN_SECOND)
                 logger.info(f'reportWorker takes: {time.time() - stts}')
@@ -572,12 +469,10 @@ class Node:
             self.zmqContext_visec = Context.instance()
             self.ctrlURL_visec = 'tcp://'+self.ctrl[0]+':'+str(self.ctrl[1]+3) 
             self.stvipub = self.zmqContext_visec.socket(zmq.PUB)
-            # self.stvipub.setsockopt(zmq.SNDHWM, ct.CTRL_BUFF_SIZE)
             self.stvipub.connect(self.ctrlURL_visec)
             while self.ready:
                 stts = time.time()
                 if self.isActive:
-                    # rx/tx packets rx/tx bytes per sec
                     data = {"id":self.id,
                             "lastupdate":round(time.time(), 4),
                             # "active":self.isActive,
@@ -610,7 +505,6 @@ class Node:
                             "rptti":self.rptti['value'],
                             "betti":self.betti['value']
                         }
-                    # self.stvipub.send(b'ST'+b'ndtraffic'+str(json.dumps(data)).encode('utf-8'))
                     self.stats.extend(b'ST'+b'ndtraffic'+str(json.dumps(data)).encode('utf-8')+b";")
                     self.stvipub.send(bytes(self.stats))
                     self.stats.clear()
@@ -630,7 +524,6 @@ class Node:
                     self.pos['value_ts'] = 0
                     self.rptti['value_ts'] = 0
                     self.betti['value_ts'] = 0
-                    # await asyncio.sleep(self.rptti['value']/ct.MILLIS_IN_SECOND)
                     await asyncio.sleep(2)
                 else: await asyncio.sleep(1)
                 logger.info(f'statusWorker takes: {time.time() - stts}')
@@ -785,38 +678,7 @@ class Node:
         if src_ngs:
             for ng in src_ngs:
                 self.neighborTable[ng['id']] = Neighbor(ng['dist'], Addr(ng['addr']), ng['rssi'], ng["port"])            
-            # async with aiofiles.open(f'outputs/neighbors/{self.id}.json', mode='w') as f:
-            #     await f.write(json.dumps(src_ngs))
     
-        '''
-        self.zmqContext_vipri = Context.instance()
-        self.ctrlURL_vipri = 'tcp://'+self.ctrl[0]+':'+str(self.ctrl[1]+2)
-        self.ngvisub = self.zmqContext_vipri.socket(zmq.SUB)
-        # self.ngvisub.setsockopt(zmq.RCVHWM, ct.CTRL_BUFF_SIZE)
-        self.ngvisub.connect(self.ctrlURL_vipri)
-        self.ngvisub.subscribe(self.id+"NG")
-        while self.ready:
-            stts = time.time()
-            data = await self.ngvisub.recv()
-            data = json.loads(data[len('NG')+len(self.id):].decode('utf-8'))
-            currNeighs = []
-            for ng in data:
-                currNeighs.append(ng['id']+'.'+str(ng['rssi']))
-                # tmp[ng['id']] = Neighbor(Addr(ng['addr']), ng['rssi'], ng["batt"], ng["port"], color=self.getLinkColor(ng['id']))
-                self.neighborTable[ng['id']] = Neighbor(ng['dist'], Addr(ng['addr']), ng['rssi'], ng["port"])            
-            # currNeighs.sort()
-            #keep idle until receiving a tosink distance < self tosink distance (default is max 255)
-        '''    
-            # if self.isSink:
-            # await self.sendBeacon()
-            # '''
-            #     if self.isActive:
-            #         packet = self.createReportPacket()
-            #         await self.runFlowMatch(packet)
-            # '''
-                    # logger.info(f'{self.id}-----> Sends Packet type ({packet.getTypeName()}) | {packet.getSrc()} --> {packet.getDst()} - Next Hop({packet.getNxh()})')                   
-            # logger.info(f'updateNGWorker takes: {time.time() - stts}')
-
     async def initFlowTable(self):
         """Add initial entries to the flow table
         Entry(0) -> Window(P.DST == myAddress) Window(P.TYP==3) Action(FORWARD_U myaddress) Stats(PERM, ..)
@@ -915,14 +777,7 @@ class Node:
         if dst:
             p.setNxh(dst)
         else:
-            p.setNxh(Addr(ct.BROADCAST_ADDR))
-        # logger.error(f'net:{p.getNet()} acked:{p.isAcked()} from {p.getSrc().__str__()} to {p.getNxh().__str__()}')
-        # self.prv_loc = 'createBeaconPacket'
-        # if p.getSrc().__str__() == '0.75':
-        #     ts2 = time.time()
-        #     logger.info(f'prv_loc: {self.prv_loc} rxHandled in: {round(ts2-self.ts1, 4)} sec')
-        #     self.ts1 = ts2
-        #     self.prv_loc = 'createBeaconPacket'
+            p.setNxh(Addr(ct.BROADCAST_ADDR))     
         return p
 
     async def createReportPacket(self):
@@ -930,15 +785,11 @@ class Node:
         p = ReportPacket(net=self.myNet, src=self.myAddress, dst=self.sinkAddress, distance=self.sinkDistance, battery=self.battery.getLevel(),
                          pos=self.position, intfType=await self.getIntfType(), sensorType=await self.getSensorType(), port=self.wintf.port-ct.BASE_NODE_PORT)   
         p.setNeighbors(self.neighborTable)
-        # logger.error(' '.join(format(i, '08b') for i in p.getPayload()))
         return p
     
     async def sendBeacon(self, acked:bool, dst:Addr=None):
-        # if self.sinkDistance < ct.DIST_MAX + 1:
         packet = await self.createBeaconPacket(acked, dst)
-        # logger.error(f'{acked} beacon created from {packet.getSrc()} to {packet.getNxh()}')
         await self.txpacket(packet)
-        # logger.error(f'{acked} beacon sent from {packet.getSrc()} to {packet.getNxh()}')
         await self.updateStats('beacon', packet)
     
     async def runAction(self, action, packet):
@@ -948,7 +799,6 @@ class Node:
             action (Action): action/s in an entry
             packet (_type_): different typs of packets (DATA, OPEN_PATH, REQUEST, RESPONSE, REPORT, BEACON)
         """
-        # async def async_thread():
         ac = action.getType()
         logger.info(f'{self.id} run ACTION ({action}) on (packet: {packet.getSrc()} --> {packet.getDst()})')
         if ac == Action.DROP.getValue():
@@ -978,7 +828,6 @@ class Node:
                 await self.runFlowMatch(rp)
         elif ac == Action.MATCH.getValue():
             await self.txpacket(packet)  
-        # asyncio.run(async_thread())
 
     async def hasLinkToSink(self):
         """Check wether the node has already base link to the sink
@@ -1025,35 +874,8 @@ class Node:
         key = Entry.getEntryWCKey(rule)
         if not key:
             key = await self.searchRule(rule)
-        # if key != '.*':
         self.flowTable[key] = rule
 
-    # def insertReverseRule(self, packet):       
-    #     """Insert Reverse Forwarding Rule
-    #     Once a data packet received in the next hop vs the sink, a reverse 
-    #     non-dublicated forwarding rule is configured.
-    #     Args:
-    #         packet (Data type packet): data packet.
-    #     """
-    #     fromSink = Entry()
-    #     fromSink.addWindow(Window().setOperator(ct.EQUAL).setSize(ct.W_SIZE_1)
-    #         .setLhsOperandType(ct.PACKET).setLhs(ct.DST_INDEX).setRhsOperandType(ct.CONST)
-    #         .setRhs(packet.getSrc().intValue()))
-    #     fromSink.addWindow(Window().setOperator(ct.EQUAL).setSize(ct.W_SIZE_1)
-    #         .setLhsOperandType(ct.PACKET).setLhs(ct.SRC_INDEX).setRhsOperandType(ct.CONST)
-    #         .setRhs(packet.getDst().intValue()))
-    #     # fromSink.addWindow(Window.fromString("P.TYP == 2"))
-    #     logger.warn(f'prev hop: {packet.getPrh().__str__()}')
-    #     fromSink.addAction(ForwardUnicastAction(nxtHop=packet.getPrh()))
-    #     fromSink.getStats().setPermanent() #added                
-    #     fromSink.getStats().setTtl(int(time.time()))
-        
-    #     # if len(self.flowTable) < ct.FT_MAX_ENTRIES or self.isSink:
-    #     #     self.flowTable['REV:'+str(packet.getSrc())] = fromSink
-    #     #     logger.info(f"{self.id} INSERT rule ({fromSink.__str__()}) at index REV:{packet.getSrc()}")
-    #     # else: logger.info(f"{self.id} FULL flowtable of size:{len(self.flowTable)}")
-    #     self.insertRule(fromSink, str(packet.getDst())+'-'+str(packet.getSrc()))
-                
     async def  isAcceptedIdPacket(self, packet):
         return await self.isAcceptedIdAddress(packet.getDst())
 
@@ -1091,7 +913,6 @@ class Node:
             if val[idx] == ct.DRL_NH_INDEX:
                 # '''
                 act_nxh_node = Addr(val[idx+1:idx+1+ct.DRL_NH_LEN])
-                # logger.info(f'from:{self.myAddress.__str__()} -------- to: {act_nxh_node.__str__()}')
                 if not act_nxh_node.__eq__(self.myAddress):  
                     entry = Entry()
                     entry.addWindow(Window().setOperator(ct.EQUAL).setSize(ct.W_SIZE_1)
@@ -1112,7 +933,6 @@ class Node:
                 else:
                     for key in self.flowTable.get_matching('dst:'+str(self.sinkAddress.intValue())):
                         logger.info(f"{self.id} REMOVE rule ({self.flowTable[key]}) at key {key}")
-                        # self.flowTable.pop(key)
                         if key != '.*':
                             del self.flowTable[key]
                 # '''
@@ -1123,7 +943,6 @@ class Node:
                 if self.rptti['value'] > ct.MAX_RP_TTI:
                     self.rptti['value'] -= ct.MAX_RP_TTI
                 await self.updateStats('rptti')
-                # logger.error(f'SET RPTTI: {self.rptti["value"]} IN NODE: {self.id}')
                 # '''
                 idx += ct.DRL_RT_LEN+1
 
@@ -1143,12 +962,6 @@ class Node:
         elif conf == ConfigProperty.GET_RULE.getValue():
             i = int(val[0]) # index of the rule
             if i < len(self.flowTable):
-                # fte = self.flowTable[i]
-                # tmp = fte.toByteArray()
-                # target = bytearray(len(tmp) + 1)
-                # target.append(i)
-                # target.extend(tmp)
-                # packet.setParams(tmp, -1)
                 pass
             else: return False
         
@@ -1178,13 +991,10 @@ class Node:
         matches = []
         key = 'src:'+str(packet.getSrc().intValue())+'dst:'+str(packet.getDst().intValue())+'typ:'+str(packet.getType())
         matches = self.flowTable.get_matching(key)
-        # print(f'key:{key}')
-        # print(f'matches:{matches}')
         if matches:
             # get the most specific matched entry (rule)
             max_key = max(matches, key=len)
             entry = matches[max_key]
-            # if self.matchRule(entry, packet):
             for action in entry.getActions():
                 await self.runAction(action, packet)
             entry.getStats().restoreIdle()
@@ -1195,7 +1005,6 @@ class Node:
         if not matches:
             rps = RequestPacket.createReqPacket(self.myNet, self.myAddress, self.sinkAddress, self.requestId+ 1, packet.toByteArray())
             for rp in rps:
-                # self.rxQueue.put_nowait(rps, self.sinkDistance, ct.RSSI_MAX)
                 await self.runFlowMatch(rp)
 
     def remvExpiredEnties(self, span_time):
@@ -1216,14 +1025,10 @@ class Node:
 
     async def updateLinkColor(self):
         """Updating the link color (for visualization purpose)"""
-        # async def async_thread():            
-        # while self.ready:            
-            # if self.isActive:
         if self.isActive:
             links = []
             source = self.id    
             sink_target = str(self.myNet)+'.'+(await self.getNextHopVsSink()).__str__()
-            # if sink_target:
             forward_nodes = []
             for key, entry in self.flowTable.items():
                 for action in entry.getActions():
@@ -1238,7 +1043,6 @@ class Node:
                 else:
                     links.append({'source':source, 'target':node, 'color':'black'})
             
-            # self.stvipub.send(b'ST'+b'LINK'+str(json.dumps({'id':source, 'links':links})).encode('utf-8'))
             self.stats.extend(b'ST'+b'LINK'+str(json.dumps({'id':source, 'links':links})).encode('utf-8')+b';')
             if not self.isSink:
                 self.stats.extend(b'ST'+b'NODE'+str(json.dumps({'id':self.id, 'color':'orange' if self.isAggr else 'blue'})).encode('utf-8')+b';')
@@ -1250,7 +1054,6 @@ class Node:
             packet (Packet): different type of packets
             rssi (_type_): received signal strength
         """
-        # async def async_thread():
         packet = p[0]
         dist = p[1]
         rssi = p[2]
@@ -1279,9 +1082,7 @@ class Node:
                 await self.rxConfig(ConfigPacket(packet.toByteArray()))
             elif ptype == ct.AGGR:
                 #receive aggregation packet
-                await self.rxAggr(AggrPacket(packet.toByteArray()))
-        # asyncio.run(async_thread())  
-            
+                await self.rxAggr(AggrPacket(packet.toByteArray()))            
    
     async def rxData(self, packet:DataPacket):
         """handle received data packets.
@@ -1318,28 +1119,14 @@ class Node:
                 toSink.getStats().setPermanent() #added    
                 await self.insertRule(toSink)
 
-                # if prvNxtHop:
-                #     links = []
-                #     source = self.id
-                #     target = str(self.myNet)+'.'+prvNxtHop.__str__()            
-                #     links.append({'source':source, 'target':target, 'color':'red'})
-                #     links.append({'source':target, 'target':source, 'color':'red'})
-                #     asyncio.create_task(self.emitStats('linkcolor', data={'id':source, 'links':links}))#TODO
             if tosink_dist+1 != self.sinkDistance and packet.getSrc().__eq__(await self.getNextHopVsSink()):
                 # update distance to sink in case the route to sink is updated
                 self.sinkDistance = tosink_dist + 1
             # update neighborTable
             target = f'{packet.getNet()}.{packet.getSrc().__str__()}'
-            # logger.error(f'src: {target} src_dist:{tosink_dist} src_aggr_dist:{toaggr_dist}')
-            # self.neighborTable[target] = Neighbor(packet.getSrc(), rssi, packet.getBattery(), packet.getPort(), self.getLinkColor(target))                        
             self.neighborTable[target] = Neighbor(dist, packet.getSrc(), rssi, packet.getPort(), tosink_dist)
-            # print(f'src_dist:{self.neighborTable[target].getToSinkDist()}')
-            # logger.error(f'ID: {self.id} Recieved: {packet.isAcked()} from {target}')
             if not packet.isAcked():
-                # logger.error(f'ID: {self.id} Send: True to {target}')
                 await self.sendBeacon(acked=True, dst=packet.getSrc())
-                # for key, val in self.neighborTable.items():
-                #     logger.error(f'ID: {self.id} has neighbor {key}: {val}')
             await self.updateLinkColor()
 
     async def rxOpenPath(self, packet:OpenPathPacket):
@@ -1373,7 +1160,6 @@ class Node:
                 packet.setDst(path[index + 1])
                 packet.setNxh(path[index + 1])
                 await self.txpacket(packet)
-            # logger.info(f'{self.id}<----- Receives Packet type ({packet.getTypeName()}) | {packet.getSrc()} --> {packet.getDst()} and Prev hope is {packet.getPrh()})')
         else:
             await self.runFlowMatch(packet)
 
@@ -1385,8 +1171,6 @@ class Node:
         """
         if self.isSink:
             return await self.controllerTx(packet)
-            # logger.info(f'{self.id}<----- Receives Packet type ({packet.getTypeName()}) | {packet.getSrc()} --> {packet.getDst()} and Prev hope is {packet.getPrh()})')
-        # if packet.getDst().__eq__(self.myAddress):
             # '''
         if self.isAggr:
             # aggregate non-redundant network view
@@ -1411,47 +1195,22 @@ class Node:
                     aggrP = AggrPacket.createAggrPacket(net=self.myNet, src=self.myAddress, dst=self.sinkAddress, type=ct.REPORT, aggr=self.cachedReports[:-1])
                     del self.cachedReports[:-1]
                     #forward the aggregated packet to the nearest sink
-
-                    # logger.error(' '.join(format(i, '08b') for i in aggrP.toByteArray()))
                     await self.runFlowMatch(aggrP)
-            # logger.info(f'{self.id}<----- Receives Packet type ({packet.getTypeName()}) | {packet.getSrc()} --> {packet.getDst()} and Prev hope is {packet.getPrh()})')
         else:           
             cachesize = sum([len(pl) for pl in self.cachedReports])
             if cachesize:
                 if cachesize > (ct.MTU - (ct.DFLT_HDR_LEN + ct.AGGR_HDR_LEN)):
                     aggrP1 = AggrPacket.createAggrPacket(net=self.myNet, src=self.myAddress, dst=self.sinkAddress, type=ct.REPORT, aggr=self.cachedReports[:-1])
                     aggrP2 = AggrPacket.createAggrPacket(net=self.myNet, src=self.myAddress, dst=self.sinkAddress, type=ct.REPORT, aggr=self.cachedReports[-1])
-
-                    # logger.error(' '.join(format(i, '08b') for i in aggrP1.toByteArray()))
-                    # logger.error(' '.join(format(i, '08b') for i in aggrP2.toByteArray()))
                     await self.runFlowMatch(aggrP1)
                     await self.runFlowMatch(aggrP2)
                 else:
-                    # print(' '.join(format(i, '08b') for i in self.cachedReports[-1])) 
-                    # print('\n')
-                    # print('----------------------')
                     aggrP = AggrPacket.createAggrPacket(net=self.myNet, src=self.myAddress, dst=self.sinkAddress, type=ct.REPORT, aggr=self.cachedReports)
-
-                    # logger.error(' '.join(format(i, '08b') for i in aggrP.toByteArray()))
                     await self.runFlowMatch(aggrP)
                 self.cachedReports = []
                 self.aggrMembs = {}
             #forward the aggregated packet to the next sink/sub_sink
-            # packet.setDst(self.sinkAddress)
-            # packet.setNxh(await self.getNextHopVsSink())
             await self.runFlowMatch(packet)
-            # if await self.runFlowMatch(packet):
-            #     # insert reverse forwarding rule (from the sink)
-            #     self.insertReverseRule(packet)
-        # '''
-        # packet.setDst(self.sinkAddress)
-        # await self.runFlowMatch(packet)
-    # else:
-    #     await self.runFlowMatch(packet)
-
-        # if await self.runFlowMatch(packet):
-        #     # insert reverse forwarding rule (from the sink)
-        #     self.insertReverseRule(packet)
 
     async def rxAggr(self, packet:AggrPacket):
         """handle received Aggregate packets.
@@ -1460,7 +1219,6 @@ class Node:
             packet (_type_): Aggregate packet
         """
         if self.isSink:
-            # logger.info(f'{self.id} RECEIVED AGGR PACKET FROM {packet.getSrc().__str__()}')
             return await self.controllerTx(packet)
         await self.runFlowMatch(packet)
 
@@ -1484,7 +1242,6 @@ class Node:
                         break
                     i += 1
             
-            # logger.info(f'{self.id}<----- Receives Packet type ({packet.getTypeName()}) | {packet.getSrc()} --> {packet.getDst()} and Prev hope is {packet.getPrh()})')
         elif dst.__eq__(self.myAddress):
             if await self.execConfig(packet):
                 # if config packet is read-only, execute it and send the results back to the controller
@@ -1494,7 +1251,6 @@ class Node:
                 packet.setTtl(ct.TTL_MAX)
                 await self.txpacket(packet)
             
-            # logger.info(f'{self.id}<----- Receives Packet type ({packet.getTypeName()}) | {packet.getSrc()} --> {packet.getDst()} and Prev hope is {packet.getPrh()})')
         else:
             path = packet.getPath()
             i = 0
@@ -1504,7 +1260,6 @@ class Node:
                     await self.txpacket(packet)
                     break
                 i += 1
-        # logger.info(f'NODE {self.id} RECEIVED CONFIG FROM {packet.getSrc().__str__()} TS {packet.getTS()} FORWARD TO {packet.getNxh().__str__()} CONFIG-PATH {[p.__str__() for p in packet.getPath()]}')     
                 
     async def rxRequest(self, packet:RequestPacket):
         """handle received REQUEST packets
@@ -1517,28 +1272,16 @@ class Node:
         if await self.isAcceptedIdPacket(packet):
             if self.isSink:
                 await self.controllerTx(packet)
-                # logger.info(f'{self.id}<----- Receives Packet type ({packet.getTypeName()}) | {packet.getSrc()} --> {packet.getDst()} and Prev hope is {packet.getPrh()})')
             else:
-                # packet.setDst(self.sinkAddress)
-                await self.runFlowMatch(packet)
-                # if await self.runFlowMatch(packet):
-                #     # insert reverse forwarding rule (from the sink)
-                #     self.insertReverseRule(packet)                
+                await self.runFlowMatch(packet)      
         elif await self.isAcceptedIdAddress(packet.getNxh()):
             if self.aggrDistance == 0:
                 #TODO add the logic of aggregating data packets
                 packet.setDst(self.sinkAddress)
                 await self.runFlowMatch(packet)
-                # if await self.runFlowMatch(packet):
-                #     # insert reverse forwarding rule (from the sink)
-                #     self.insertReverseRule(packet)
             else:
                 # find matched forwarding rule to the sink
-                # packet.setDst(self.sinkAddress)
                 await self.runFlowMatch(packet)
-                # if await self.runFlowMatch(packet):
-                #     # insert reverse forwarding rule (from the sink)
-                #     self.insertReverseRule(packet)
 
     async def rxResponse(self, packet:ResponsePacket):
         """handle received RESPONSE packets.
@@ -1549,7 +1292,6 @@ class Node:
         if await self.isAcceptedIdPacket(packet):
             entry = packet.getRule()
             await self.insertRule(entry)
-            # logger.info(f'{self.id}<----- Receives Packet type ({packet.getTypeName()}) | {packet.getSrc()} --> {packet.getDst()} and Prev hope is {packet.getPrh()})')
         else:
             await self.runFlowMatch(packet)
     
@@ -1688,7 +1430,6 @@ class _SocketProtocol:
             self._packets = janus.Queue(0).async_q
         else:
             self._packets = janus.Queue(ct.BUFFER_SIZE).async_q
-        # self._packets = janus.Queue(packets_queue_max_size).async_q
 
     def connection_made(self, transport):
         pass
@@ -1789,7 +1530,6 @@ class FlowTable(dict):
     def __delitem__(self, key) -> None:
         super().__delitem__(key)
         asyncio.create_task(self.node.updateLinkColor())
-        # asyncio.create_task(self.node.sendBeacon())            
    
     def __setitem__(self, item, value):
         if self.get(item):
@@ -1806,7 +1546,6 @@ class FlowTable(dict):
     def pop(self, key, nval=None):
         super().pop(key, nval)        
         asyncio.create_task(self.node.updateLinkColor())
-        # asyncio.create_task(self.node.sendBeacon())
     
     def get_matching(self, event):
         return {key:self[key] for key in self if re.match(key, event)}    
@@ -1837,10 +1576,6 @@ class Mote(Node):
             packet (DataPacket): _description_
         """
         #TODO add a proper logic (as per the simulation purpose)
-        # forward the packet to the sink/gateway
-        # packet.setSrc(self.myAddress).setDst(self.sinkAddress).setTtl(ct.TTL_MAX+1)
-        # self.runFlowMatch(packet)
-        # or send back to the src node
         pass
 
     def sensingQueueWorker(self):
@@ -1853,28 +1588,15 @@ class Mote(Node):
             while self.ready:
                 stts = time.time()
                 if self.isActive:
-                    # print('sensingQueueworker')
                     recv = await self.sensingQueue.get()
                     if self.isActive:
                         data = recv[0]
                         sqNo = recv[1]
                         sensingTime = recv[2]
-                        # if len(data) > ct.DFLT_PAYLOAD_LEN:
                         #TODO partition data greater than DFLT_PAYLOAD_LEN to aggreate at the destination (sink)
                         packet = DataPacket(net=self.myNet, src=self.myAddress, dst=self.sinkAddress, payload=data)             
-                        # packet.setTS(round(time.time(), 4))
-                        # packet.setPrh(self.myAddress)
-                        # self.ts1 = time.time()  
-                        # self.prv_loc = 'sensor' 
-                        # self.rxQueue.put_nowait((packet, self.sinkDistance, ct.RSSI_MAX))
                         await self.runFlowMatch(packet)
-                        # if packet.getType() == ct.DATA and packet.getSrc().__str__() == '0.75':
-                        #     ts2 = time.time()
-                        #     logger.info(f'prv_loc: {self.prv_loc} runFlowMatch in: {round(ts2-self.ts1, 4)}')
-                        #     self.ts1 = ts2
-                        #     self.prv_loc = 'sensor'
                         seq += 1
-                        # logger.info(f'{self.id}-----> Sends Packet type ({packet.getTypeName()}) | {packet.getSrc()} --> {packet.getDst()} - Next Hop({packet.getNxh()})')
                 else: await asyncio.sleep(1)
                 logger.info(f'sensingQueueWorker takes: {time.time() - stts}')
         asyncio.run(async_thread())
@@ -1904,10 +1626,6 @@ class Sink(Node):
         # Sinks tx and rx Queues (assume the sink has unlimited queue for sending/receiving packets)
         self.dpid = dpid
         self.addrController = ctrl
-        # IP
-        # use ip6
-        # self.start()
-        # self.join()
         
     def connCtrlWorker(self):
         """Worker for advertising Sink itself to the controller every 5 seconds"""
@@ -1944,7 +1662,6 @@ class Sink(Node):
                 if self.isActive:
                     packet = await self.subscriber.recv()
                     await self.rxPacket(Packet(packet[len('OUT'):]).setTS(round(time.time(), 4)), round(time.time(), 4), 'rx-ctrl')
-                    # asyncio.get_running_loop().run_in_executor(None, self.rxPacket, Packet(packet[len('OUT'):]).setTS(round(time.time(), 4)), round(time.time(), 4), 'rx-ctrl')          
                 else: await asyncio.sleep(1)
                 logger.info(f'packetOutWorker takes: {time.time() - stts}')
         asyncio.run(async_thread())

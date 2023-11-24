@@ -30,21 +30,16 @@ Ref:https://github.com/sdnwiselab/sdn-wise-java
 }
 """
 
-from ctypes import ArgumentError, c_uint32 as unsigned_int32
+from ctypes import c_uint32 as unsigned_int32
 from enum import Enum
-from socket import inet_pton
-from math import ceil, floor, modf
-from collections import OrderedDict
-import ipaddress
+from math import floor, modf
 import copy
-import struct
 import time
 
-from ctypes import Array
-from logging import setLogRecordFactory, warn
+from logging import warn
 from ssdwsn.openflow.entry import Entry
 from ssdwsn.openflow.window import Window
-from ssdwsn.util.utils import mergeBytes, ipStr, ip6Str, macColonHex, _colonHex, long_to_bytes, byteToStr, bitsToBytes, getBitRange, setBitRange
+from ssdwsn.util.utils import bitsToBytes, getBitRange, setBitRange
 from ssdwsn.data.addr import Addr
 from ssdwsn.util.constants import Constants as ct
 
@@ -927,102 +922,3 @@ class AggrPacket(Packet):
             #     pl[6:8] = int(floatnum*10000).to_bytes(2, 'big')
             aggrPayload += pl
         return AggrPacket(net=net, src=src, dst=dst, aggrType=type, aggrPayload=aggrPayload)
-    
-if __name__ == '__main__':
-    from ssdwsn.data.addr import Addr
-    from ssdwsn.data.neighbor import Neighbor
-    from ssdwsn.util.utils import getColorVal
-
-    aggrMembs = {}
-    cachedReports = []
-    packet = ReportPacket(net=1, src=Addr('0.2'), dst=Addr('0.1'), distance=4, battery=65554, 
-                            pos=(23,44,5), intfType=3, sensorType=2, port=65656)
-    packet.setNeighbors({'1.0.3':Neighbor(packet.getSrc(), Addr('0.3'), 185, 65151, 65154), '1.0.4':Neighbor(packet.getSrc(), Addr('0.4'), 185, 65151, 65154)}) 
-    print(' '.join(format(i, '08b') for i in packet.toByteArray()))
-    src_id = f'{packet.getNet()}.{packet.getSrc()}'
-    aggrMembs[src_id] = packet.toByteArray()
-    packet = ReportPacket(net=1, src=Addr('0.2'), dst=Addr('0.1'), distance=4, battery=65322, 
-                            pos=(23,44,5), intfType=3, sensorType=2, port=65656)
-    packet.setNeighbors({'1.0.3':Neighbor(packet.getSrc(), Addr('0.3'), 185, 65151, 65154), '1.0.5':Neighbor(packet.getSrc(), Addr('0.5'), 185, 65151, 65154)}) 
-    print(' '.join(format(i, '08b') for i in packet.toByteArray()))
-    p = packet.getAggrPayload(aggrMembs[src_id])
-    cachedReports.append(p)
-
-
-    packet = ReportPacket(net=1, src=Addr('0.4'), dst=Addr('0.1'), distance=5, battery=65556, 
-                            pos=(23,30,3), intfType=3, sensorType=2, port=65659)
-    packet.setNeighbors({'1.0.5':Neighbor(packet.getSrc(), Addr('0.5'), 185, 65151, 65154), '1.0.6':Neighbor(packet.getSrc(), Addr('0.6'), 185, 65151, 65154)}) 
-    print(' '.join(format(i, '08b') for i in packet.toByteArray()))
-    src_id = f'{packet.getNet()}.{packet.getSrc()}'
-    aggrMembs[src_id] = packet.toByteArray()
-    packet = ReportPacket(net=1, src=Addr('0.4'), dst=Addr('0.1'), distance=5, battery=65222, 
-                            pos=(23,30,3), intfType=3, sensorType=2, port=65659)
-    packet.setNeighbors({'1.0.5':Neighbor(packet.getSrc(), Addr('0.5'), 185, 65151, 65154), '1.0.6':Neighbor(packet.getSrc(), Addr('0.6'), 185, 65151, 65154)}) 
-    print(' '.join(format(i, '08b') for i in packet.toByteArray()))
-    p = packet.getAggrPayload(aggrMembs[src_id])
-    cachedReports.append(p)
-
-    aggrP = AggrPacket.createAggrPacket(net=1, src=Addr('0.1'), dst=Addr('0.0'), type=ct.REPORT, aggr=cachedReports)
-    # for sp in self.cachedReports[:-1]:
-                        #     print(' '.join(format(i, '08b') for i in sp[8:])) 
-                        #     print('\n')
-
-    print(' '.join(format(i, '08b') for i in aggrP.toByteArray()))
-    print('\n')
-                                            
-    # distance = int.from_bytes(int.to_bytes(255, 1, 'big', signed=False) + int.to_bytes(0, 1, 'big', signed=False), 'big', signed=False)
-    # p = BeaconPacket(net=1, src=Addr('0.2'), dst=Addr('0.1'), distance=distance, battery=65554, 
-    #                         pos=(23,44,5), intfType=3, sensorType=2, port=65656)
-
-    # p = ReportPacket(net=1, src=Addr('0.2'), dst=Addr('0.1'), distance=distance, battery=65554, 
-    #                         pos=(23,44,5), intfType=3, sensorType=2, port=65656)
-
-    # p.setNeighborsSize(1)
-    # p.setNeighborAddress(0, Addr('0.3'))
-    # p.setLinkQuality(0, 185)
-    # aggrpayload = None
-    # isAggrHead = True
-    # aggrpayload = bytearray(int.to_bytes(1, 1, 'big', signed=False)+int.to_bytes(0, 1, 'big', signed=False)+int.to_bytes(4, 1, 'big', signed=False))
-    # p = BeaconPacket(net=1, src=Addr('0.2'), dst=Addr('0.1'), distance=4, battery=455412, 
-    #                     pos=(23,44,5), intfType=3, sensorType=2, port=6662, aggrpayload=aggrpayload)
-    # p.setNxh(Addr(ct.BROADCAST_ADDR))
-    # print(' '.join(format(i, '08b') for i in p.toByteArray())) 
-    # print('\n')  
-    # print(p.hasAggrPayload())
-    # print(p.getAggrConfig().get('distance'))
-    # print(p.getAggrConfig().get('dst'))
-    # print(' '.join(format(i, '08b') for i in p.getAggrPayload()))                                                     
-    # print(p.getLen())
-
-    # cp = ConfigPacket(net=1, src=Addr('0.0'), dst=Addr('0.4'), write=ConfigProperty.IS_AGGR, val=int(True).to_bytes(1, 'big'), path=[Addr('0.0'),Addr('0.1'), Addr('0.2'), Addr('0.4')])                     
-    # print(' '.join(format(i, '08b') for i in cp.toByteArray()))                            
-    # print(cp.getLen())
-    # print(cp.getParams())
-    # print(distance)
-    # print(p.getDistance())
-
-    # distance = 10
-    # p = ReportPacket(net=1, src=Addr('0.2'), dst=Addr('0.1'), distance=distance, battery=6554, 
-    #                         pos=(23,44,0), intfType=3, sensorType=2, port=55)
-
-
-    # neighborTable = {}
-    # tmp = {}
-    # for i in range(3):
-    #     tmp[i] = Neighbor(Addr('0.25'), 180, 92554, 233, color='red')
-    # neighborTable = tmp
-
-    # # p.setNeighbors(neighborTable)
-    # print(len(neighborTable))
-    # p.setNeighborsSize(len(neighborTable))
-    # i=0
-    # for key in neighborTable:
-    #     p.setNeighborAddress(i, neighborTable[key].getAddr())
-    #     p.setLinkQuality(i, neighborTable[key].getRssi())
-    #     p.setLinkColor(i, neighborTable[key].getColorInt())
-    #     i += 1
-    # print(' '.join(format(i, '08b') for i in p.toByteArray())) 
-    # # p.setNeighborsSize(1)
-    # p.setNeighborAddress(0, Addr('0.3'))
-    # p.setLinkQuality(0, 185)
-    # print(getColorVal(p.getLinkColor(1)))

@@ -5,7 +5,6 @@ import itertools
 import torch as T
 import random
 import numpy as np
-from sklearn.preprocessing import MultiLabelBinarizer, StandardScaler, MinMaxScaler
 from typing import Iterable, Callable
 
 class ReplayBuffer:

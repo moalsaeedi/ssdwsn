@@ -18,16 +18,11 @@
 """
 
 from asyncore import loop
-from multiprocessing import pool
 from random import randint
-from socket import socket
-from threading import Thread
-from optparse import OptionGroup, OptionParser
+from optparse import OptionParser
 from os import environ, kill, getpid, system
 from os.path import join as path_join
 from sys import path, stdout, exc_info, version_info as py_version_info, stderr
-
-from ssdwsn.app.routing import Dijkstra
 
 if 'PYTHONPATH' in environ:
     path = environ[ 'PYTHONPATH' ].split(':') + path
@@ -51,7 +46,7 @@ import aiohttp
 import re
 from subprocess import Popen, PIPE, check_output
 from networkx.readwrite import json_graph
-from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
+from concurrent.futures import ProcessPoolExecutor
 import concurrent.futures
 import signal
 import requests
@@ -301,55 +296,6 @@ def parseArgs():
         exit()
     return options, args
 
-'''
-def setup(options):
-    "Setup and validate environment."
-
-    # set logging verbosity
-    if LEVELS[options.verbosity] > LEVELS['output']:
-        info('*** WARNING: selected verbosity level (%s) will hide CLI '
-                'output!\n'
-                'Please restart ssdwsn with -v [debug, info, output].'
-                % options.verbosity)
-    lg.setLogLevel(options.verbosity)
-    
-
-def configNeigborTable(nodes, graph):
-    # data = json.dumps(json_graph.node_link_data(graph.getGraph()), indent=4)
-    for node in nodes:
-        if hasattr(node, 'isSink'):
-            node.neighborTable.clear()   
-            for addr in graph.nodes:
-                nd = graph.nodes.get(addr)
-                if node.isInRange(nd): 
-                    rssi = mapRSSI(node.getRssi(nd))
-                    node.getNeighborTable()[addr] = Neighbor(Addr(addr), rssi, nd["batt"], (nd["ip"], nd["port"]))
-                    # node.lastUpdatedGraphTimeStamp = dir_path.stat().st_mtime
-
-    opts = options
-
-    if opts.quit:
-        cleanUp()
-        exit()
-        
-    dir_path = Path(opts.config)
-    networkGraph = None
-    nodes = []
-    with open(dir_path, 'r+') as f:
-        data = json.load(f)
-        topo = data["topo"]
-        stats = data["stats"]
-        for key in stats:
-            stats[key] = 0
-            f.seek(0)
-            json.dump(data, f, indent=2)
-            f.truncate()  
-            
-    f.seek(0)
-    json.dump(data, f, indent=2)
-    f.truncate()
-    '''
-
 def configNeighbors(nd, graph):
         """Wireless access medum"""
         """Wireless node can access the signal of nodes in its transmition range"""
@@ -393,19 +339,6 @@ def configNeighbors(nd, graph):
 def handler(signum, frame):
     kill(getpid(), signal.SIGTERM)
     exit(0)
-
-# def init(ppid):
-#     pid = getpid
-#     def f():
-#         while True:
-#             try:
-#                 kill(ppid, 0)
-#             except OSError:
-#                 kill(pid, signal.SIGTERM)
-#             time.sleep(1)
-
-#     thread = Thread(target=f, daemon=True)
-#     thread.start()
 
 def init():    
     signal.signal(signal.SIGINT, handler)

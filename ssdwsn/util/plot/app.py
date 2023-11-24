@@ -1,19 +1,15 @@
-import asyncio
-from typing import Counter
 from aiohttp import web
 from aiohttp.web_runner import GracefulExit
 import aiofiles
-from numpy import broadcast
 import socketio
 from time import sleep
 from threading import Lock
-import os
+from os import path, listdir
 from sanic import Sanic
 from sanic.response import html
 from ssdwsn.util.constants import Constants as ct
 import eventlet
 import json
-import time
 from pathlib import Path
 
 eventlet.monkey_patch()  
@@ -57,8 +53,8 @@ sio.attach(app)
 
 
 async def index(request):
-    dirname = os.path.dirname(__file__)
-    filename = os.path.join(dirname, './templates/index.html')
+    dirname = path.dirname(__file__)
+    filename = path.join(dirname, './templates/index.html')
     # async with aiofiles.open(filename) as file_obj:
     with open(filename) as file_obj:
         return web.Response(text = file_obj.read(), content_type='text/html')
@@ -222,7 +218,7 @@ async def opentopo(sid, data):
     #     return json.loads(await f.read())
 @sio.event
 async def gettopofiles(sid):
-    data  = [x for x in os.listdir('./outputs/topo/') if x.endswith('.json')]
+    data  = [x for x in listdir('./outputs/topo/') if x.endswith('.json')]
     await sio.emit('sr_gettopofiles', data)
 
 app.router.add_static('/static/', path='./ssdwsn/util/plot/static/')

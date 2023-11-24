@@ -1,2 +1,3 @@
-#ssdwsn
-Smart Software-Defined Internet of Things
+Scalable Software-Defined Wireless Sensor Networks (SSDWSN)
+
+installation code and documentation will be pushed soon ...

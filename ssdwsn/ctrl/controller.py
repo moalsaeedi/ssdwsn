@@ -19,57 +19,34 @@
 
 from cProfile import run
 from cmath import inf
-from multiprocessing import Process
-from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 from collections import defaultdict, deque
 import re
-from os import cpu_count, path
-import gym
-from gym import spaces
-import networkx as nx
+from os import path
 from networkx.readwrite import json_graph
-import numpy as np
 from numpy.core.fromnumeric import ndim, size
-from sklearn import preprocessing
-import scipy.stats as stats
 from ssdwsn.app.routing import Dijkstra
 from ssdwsn.ctrl.graph import Graph
 import time
 import asyncio, logging
-from ssdwsn.openflow.action import ForwardUnicastAction, DropAction
+from ssdwsn.openflow.action import ForwardUnicastAction
 from ssdwsn.openflow.window import Window
-from ssdwsn.util.utils import mergeBytes, Suspendable, CustomFormatter, getInterArrivalTime, moteAddr, mapRSSI, portToAddrStr, getColorVal, setBitRange, bitsToBytes, zero_division
-from app.utilts import RunningMeanStd
+from ssdwsn.util.utils import mergeBytes, CustomFormatter, setBitRange, bitsToBytes, zero_division
 from math import ceil, log, sqrt, atan2, pi
-# from ssdwsn.util.log import warn, info, debug, error, output
 from ssdwsn.openflow.entry import Entry
 from ssdwsn.data.addr import Addr
 from ssdwsn.app.routing import Dijkstra
 from ssdwsn.openflow.packet import ConfigPacket, ConfigProperty, OpenPathPacket, Packet, DataPacket, ReportPacket, RequestPacket, ResponsePacket, AggrPacket, RegProxyPacket
 from ssdwsn.data.sensor import SensorType
 from ssdwsn.data.intf import IntfType
-# from ssdwsn.ctrl.networkGraph import dijkstra, shortest_path, Graph
 from ssdwsn.util.constants import Constants as ct
-from ctypes import ArgumentError, c_uint32 as unsigned_int32
 from expiringdict import ExpiringDict
 import zmq
-from zmq.asyncio import Context, Poller, ZMQEventLoop
-
-import janus
+from zmq.asyncio import Context, Poller
 import socketio
 from socketio import exceptions
 import json
 from sys import stderr
-import functools
-import signal
-from concurrent.futures import CancelledError
-import numpy as np
-import pandas as pd
-from sklearn.preprocessing import MultiLabelBinarizer, StandardScaler, MinMaxScaler
-from sklearn.model_selection import train_test_split       
-
-import zmq
-from zmq.asyncio import Context, Poller, ZMQEventLoop
+from sklearn.model_selection import train_test_split
 
 #logging----------------------------
 logger = logging.getLogger(__name__)
@@ -91,10 +68,6 @@ class Controller:
         self.id = self.id = 'Controller-%s:%s'% (inetAddress[0], inetAddress[1])
         self.isStopped = False
         # self.cmd = input() # TODO
-        # Packet-In/Out queues (buffers of controller's channel to the data plane)
-        # self.packetInQueue = None
-        # self.packetOutQueue = asyncio.Queue(0, loop=self.loop)
-        # expiring cache dict of request packets
         self.requestCache = ExpiringDict(max_len=ct.CACHE_MAX_SIZE, max_age_seconds=ct.CACHE_EXP_TIME) 
         self.aggrCache = ExpiringDict(max_len=ct.CACHE_MAX_SIZE, max_age_seconds=ct.CACHE_EXP_TIME) 
         # controller's address (IP, port)
@@ -171,10 +144,7 @@ class Controller:
             self.sio.register_namespace(self.priNameSpace(self, self.loop, namespace='/ctrl'))
             self.sio.register_namespace(self.pupNameSpace(self, self.loop, namespace='/'))
             # initial queuing configuration
-            # self.packetInQueue = asyncio.Queue(0)
             await self.connect()
-            # await self.statsWorker()
-            # await self.nodeSTWorker()
         except KeyboardInterrupt:
             logger.info('ctrl+c')
         finally:
@@ -295,23 +265,10 @@ class Controller:
         await asyncio.sleep(2)
         # CORE ASYNCHRONOUS WORKERS: Async workers to handle network flow
         tasks = []
-        # tasks.append(self.loop.run_in_executor(None, self.topoDiscWorker))
         tasks.append(self.loop.run_in_executor(None, self.packetInWorker))
         tasks.append(self.loop.run_in_executor(None, self.ctrlLearningWorker))
         tasks.append(self.loop.run_in_executor(None, self.nodeSTWorker))
         await asyncio.gather(*tasks)
-        # asyncio.create_task(self.topoDiscWorker())
-        # asyncio.create_task(self.packetInQueueWorker())
-        # asyncio.create_task(self.packetInWorker())
-        # asyncio.create_task(self.nodeSTWorker())
-        # CUSTOMIZED ASYNCHRONOUS WORKER: A specific controller's async worker
-        
-        # asyncio.create_task(self.ctrlLearningWorker())
-        # if hasattr(self, "ctrlLearningWorker"):
-        #     asyncio.create_task(self.ctrlLearningWorker())
-        # while True:
-        #     print('connect********************************************')
-        #     await asyncio.sleep(2)
 
     async def tx_proxy(self):
         poller = Poller()
@@ -413,109 +370,6 @@ class Controller:
         def on_disconnect(self):
             pass  
 
-    # async def getDistance(self, src_pos, dst_pos):
-    #     """get distance between two nodes
-
-    #     Args:
-    #         src (tuple): source node position xyz
-    #         dst (tuple): destination node position xyz
-
-    #     Returns:
-    #         int: distance
-    #     """
-    #     pos_src = [x for x in src_pos]
-    #     pos_dst = [x for x in dst_pos]
-    #     if len(pos_src) < 3:
-    #         pos_src.append(0)
-    #     if len(pos_dst) < 3:
-    #         pos_dst.append(0)
-    #     x = (int(pos_src[0]) - int(pos_dst[0])) ** 2
-    #     y = (int(pos_src[1]) - int(pos_dst[1])) ** 2
-    #     z = (int(pos_src[2]) - int(pos_dst[2])) ** 2
-    #     dist = sqrt(x + y + z)
-    #     return round(dist, 2)
-    
-    # async def isInRange(self, dist, dst_radio):
-    #     """check if node is in the transmission range of another node
-
-    #     Args:
-    #         dist (float): distance between two nodes
-    #         dst_txrange (int): distination node radio tx range
-
-    #     Returns:
-    #         bool: True/False
-    #     """
-    #     if dist > dst_radio['antRange']:
-    #         return False
-    #     return True
-
-    # async def getRssi(self, src_radio, dst_radio, dist):
-    #     """calculate the expected rssi using the configured propagation model
-
-    #     Args:
-    #         dst_radio (dict): source node radio params
-    #         dst_radio (dict): destination node radio params
-
-    #     Returns:
-    #         int: rssi (dB)
-    #     """
-    #     return int(self.ppm.rssi(src_radio, dst_radio, dist))
-    
-    # async def getSnr(self, src, dst, noise_th):
-    #     """calculate signal to noise ratio using rssi (dB)
-    #     SNR = RSSI – RF background noise
-
-    #     Args:
-    #         dst (NodeView): destination node
-    #         noise_th (int): background noise (dB)
-
-    #     Returns:
-    #         int: Signal-to-Noise Ratio (dB)
-    #     """
-    #     return await self.getRssi(self, src, dst) - noise_th
-
-    # async def getAdjacencyList(self):
-    #     """Get Node's graph adjacencies (neighboring nodes)"""
-    #     ngs = {}
-    #     for node in self.networkGraph.graph.nodes(data=True):
-    #         src_ngs = []
-    #         src_id = str(node[0])
-    #         src_data = node[1]
-    #         src_radio = IntfType.getParams(src_data['intftype'])
-    #         for nd in self.networkGraph.graph.nodes(data=True):
-    #             dst_id = str(nd[0])
-    #             dst_data = nd[1]
-    #             dst_radio = IntfType.getParams(dst_data['intftype'])
-    #             dist = await self.getDistance(src_data['pos'], dst_data['pos'])
-    #             if await self.isInRange(dist, dst_radio) and (dst_id != src_id):
-    #                 rssi = mapRSSI(await self.getRssi(src_radio, dst_radio, dist)) 
-    #                 addr = '{}.{}'.format(dst_id.split('.')[1], dst_id.split('.')[2])
-    #                 src_ngs.append({'id':dst_id,
-    #                                 'dist': dist,
-    #                                 'addr':addr,
-    #                                 'rssi':rssi,
-    #                                 'port':dst_data['port']})
-    #         if src_ngs:
-    #             # ngs['/'+src_id] = src_ngs   
-    #             ngs[src_id] = src_ngs   
-    #     return ngs
-
-    # def topoDiscWorker(self):
-    #     """worker: discover neighbors for each node
-    #     Assuming that the node can descover its neigbors in its transmission range
-    #     """
-    #     # import aiofiles
-    #     # async with aiofiles.open('outputs/topo/topo.json') as f:
-    #     #     data = json.loads(await f.read())
-    #     #     self.webpub.send(str(data).encode('utf-8'))
-    #     async def async_thread():
-    #         while True:  
-    #             ngs = await self.getAdjacencyList()
-    #             for key in ngs:                
-    #                 self.vipub.send(key.encode('utf-8')+b'NG'+str(json.dumps(ngs[key])).encode('utf-8'))
-    #                 await asyncio.sleep(ct.BE_TTI/ct.MILLIS_IN_SECOND)
-    #     asyncio.run(async_thread())
-
     def nodeSTWorker(self):
         """Subscribe worker to handle a publisher's request to change the color/status of the graph link/node
         """
@@ -527,7 +381,6 @@ class Controller:
                 for data in stats:
                     if data[len('ST'):len('ST')+len('LINK')] == 'LINK':
                         data = json.loads(data[len('ST')+len('LINK'):])
-                        # asyncio.create_task(self.emitStats('linkcolor', data=data))
                         for link in data['links']:
                             self.networkGraph.updateEdgeColor(link['source'], link['target'], link['color'])
                     elif data[len('ST'):len('ST')+len('NODE')] == 'NODE':
@@ -536,7 +389,6 @@ class Controller:
                     elif data[len('ST'):len('ST')+len('perf')] == 'perf':
                         data = json.loads(data[len('ST')+len('perf'):])
                         for key,val in data.items():
-                            # print(f'key:{key} val:{val}')
                             if key != 'id':
                                 if self.perf_buffer.get(key):
                                     self.perf_buffer[key].append(val)
@@ -547,13 +399,11 @@ class Controller:
                     elif data[len('ST'):len('ST')+len('ndtraffic')] == 'ndtraffic':
                         data = json.loads(data[len('ST')+len('ndtraffic'):])
                         self.networkGraph.getNode(data['id'])['lastupdate'] = data['lastupdate']
-                        # self.networkGraph.getNode(data['id'])['active'] = bool(data['active'])
                         self.networkGraph.getNode(data['id'])['pos'] = data['pos']
                         self.networkGraph.getNode(data['id'])['batt'] = data['batt']
                         self.networkGraph.getNode(data['id'])['betti'] = data['betti']
                         self.networkGraph.getNode(data['id'])['rptti'] = data['rptti']
                         for key,val in data.items():
-                            # print(f'key:{key} val:{val}')
                             if key not in ['id', 'active', 'lastupdate', 'pos', 'batt', 'betti', 'rptti', 
                                 'txpackets_val_ts', 'txbeacons_val_ts', 'rxpackets_val_ts', 'drpackets_val_ts']:
                                 if self.buffer.get(key):
@@ -684,102 +534,36 @@ class Controller:
                 await self.rxAggr(AggrPacket(packet.toByteArray()))
 
     async def rxReport(self, packet:ReportPacket):
-        # async def async_thread():  
         modified = await self.networkGraph.updateMap(packet)
         if modified:
             ## reactive update to modification in the network topology
-            # data = json_graph.node_link_data(self.networkGraph.getGraph())
             pass
-        # asyncio.run(async_thread())
 
     async def rxRequest(self, packet:RequestPacket):
-        # async def async_thread():  
         p = await self.putInRequestCache(packet)
         if not(p is None):
             await self.manageRoutingRequest(packet, p)
-        # asyncio.run(async_thread())
 
     async def rxConfig(self, packet:ConfigPacket):
-        # async def async_thread():  
         #TODO
-        # key = ""
-        # if cp.getConfigId() == ConfigProperty.GET_RULE:
-        #     key = ("{} {} {} {}").format(cp.getNet(), cp.getSrc(), cp.getConfigId, cp.getParams()[0])                 
-        # else:
-        #     key = ("{} {} {}").format(cp.getNet(), cp.getSrc(), cp.getConfigId)
         pass
-        # asyncio.run(async_thread())
 
     async def rxRegProxy(self, packet:RegProxyPacket):
-        # async def async_thread():  
-        # self.sinkAddress = packet.getSrc() #TODO multiple sinks or use broker addr to multi-subscribers sinks  
+        #TODO multiple sinks or use broker addr to multi-subscribers sinks  
         sinkid = str(packet.getNet())+'.'+packet.getSrc().__str__()
         if sinkid not in self.sinks:      
             self.sinks.append(sinkid)
-        # asyncio.run(async_thread())
 
     async def rxAggr(self, packet:AggrPacket):
-        # async def async_thread():
         aggrtype = packet.getAggrType()
-        # await self.parseAggrPacket(packet)
         # '''
         aggrpackets = await self.getAggrPackets(packet)
         for p in aggrpackets:
             if aggrtype == ct.REPORT:
-                # await self.rxReport(p)
-                # logger.error(f"SINK|||||||src: {p.getSrc().__str__()} NG: {[{'addr':x['addr'].__str__(), 'color':getColorVal(x['color'])} for x in p.getNeighbors()]}")
-                # print(f'here you check...\n')
-                # print(' '.join(format(i, '08b') for i in p.toByteArray())) 
                 modified = await self.networkGraph.updateMap(p)
                 if modified:
                     ## reactive update to modification in the network topology
-                    # data = json_graph.node_link_data(self.networkGraph.getGraph())
                     pass
-            # if aggrtype == ct.DATA:
-            #     # await self.rxData(p)
-            #     recvTime = round(time.time(), 4) #- ((ct.TTL_MAX + 1 - packet.getTtl()) * ct.SLOW_NET)
-            #     sendTime = p.getTS()
-            #     data = {"id":'{}.{}'.format(p.getNet(), p.getSrc().__str__()),
-            #             "delay":(recvTime - sendTime)*1000,
-            #             "throughput":(len(p.toByteArray())*0.001*8)/((recvTime - sendTime)*2)#packet_size/RTT
-            #         }
-            #     self.stvipub.send(b'ST'+b'rxpacket'+str(json.dumps(data)).encode('utf-8'))
-            #     asyncio.create_task(self.emitStats('rxpacket', data))
-        # '''
-        # asyncio.run(async_thread())
-
-    # async def parseAggrPacket(self, packet:AggrPacket):
-    #     graph = self.networkGraph
-    #     payload = packet.getAggrPayload()
-    #     aggrtype = packet.getAggrType()
-    #     index = 0
-    #     if aggrtype == ct.REPORT:
-    #         while len(payload) > index:
-    #             index += 1
-    #             pl_size = payload[index]              
-    #             src = Addr(payload[index:index+ct.AGGR_SRC_LEN])
-    #             index += ct.AGGR_SRC_LEN
-    #             pl_size -= ct.AGGR_SRC_LEN
-    #             src_id = str(packet.getNet())+'.'+src.__str__()
-    #             ts = payload[index:index+ct.AGGR_TS_LEN]
-    #             index += ct.AGGR_TS_LEN
-    #             pl_size -+ ct.AGGR_TS_LEN
-    #             for _ in range(pl_size):
-    #                 if payload[index] == ct.DST_INDEX:
-    #                     graph.updateDistance(src_id, payload[index+1])
-    #                     index += 1
-    #                 if payload[index] == ct.BATT_INDEX:
-    #                     batt = int.from_bytes(payload[index+1:index+1+ct.BATT_LEN], byteorder='big', signed=False)
-    #                     graph.updateBattery(src, batt)
-    #                     index += ct.BATT_LEN
-    #                 if payload[index] == ct.POS_INDEX:
-    #                     pass
-    #                 if payload[index] == ct.INFO_INDEX:
-    #                     pass
-    #                 if payload[index] == ct.PORT_INDEX:
-    #                     pass
-    #                 if payload[index] == ct.NEIGH_INDEX:
-    #                     pass
 
     async def getAggrPackets(self, packet:AggrPacket):
         graph = self.networkGraph
@@ -788,10 +572,6 @@ class Controller:
         index = 0
         plindex = 0
         packets = []
-        # print('received aggr payload:\n')
-        # logger.error(' '.join(format(i, '08b') for i in payload)) 
-        # print('\n')
-        # print(f'index: {index}\n')
         while len(payload) > index:
             pl_size = payload[index]
             src = Addr(payload[index+ct.AGGR_SRC_INDEX:index+ct.AGGR_SRC_INDEX+ct.AGGR_SRC_LEN])
@@ -800,12 +580,8 @@ class Controller:
             p.data[ct.TS_INDEX:ct.TS_INDEX+ct.TS_LEN] = payload[index+ct.AGGR_TS_INDEX:index+ct.AGGR_TS_INDEX+ct.AGGR_TS_LEN]
             p.data[ct.TYP_INDEX] = aggrtype
             plindex += ct.AGGR_PLHDR_LEN
-            # p.setPayload(payload[index+ct.AGGR_TS_INDEX+ct.AGGR_TS_LEN:index+pl_size+1])
             # construct packet payload
             if aggrtype == ct.REPORT:
-
-                # print(f'index: {index}\n')
-                # print(f'plindex: {plindex}\n')
                 pl = bytearray()
                 if (index+pl_size) > plindex:
                     if payload[plindex] != ct.DIST_INDEX:
@@ -813,8 +589,6 @@ class Controller:
                     else:
                         pl += int.to_bytes(payload[plindex+1], 1, 'big', signed=False)
                         plindex += 2
-                        # print(f'index: {index}\n')
-                        # print(f'plindex: {plindex}\n')
                 else:
                     pl += int.to_bytes(graph.getNode(src_id)['distance'], 1, 'big', signed=False)
                 if (index+pl_size) > plindex:
@@ -823,22 +597,15 @@ class Controller:
                     else:
                         pl += payload[plindex+1:plindex+1+ct.BATT_LEN]
                         plindex += ct.BATT_LEN+1
-                        # print(f'index: {index}\n')
-                        # print(f'plindex: {plindex}\n')
                 else:
                     pl += int.to_bytes(graph.getNode(src_id)['batt'], ct.BATT_LEN, 'big', signed=False)
                 if (index+pl_size) > plindex:
                     if payload[plindex] != ct.POS_INDEX:
-                        # logger.error(f"x: {int(graph.getNode(src_id)['x'])} y: {int(graph.getNode(src_id)['y'])}")
                         pl += int.to_bytes(int(graph.getNode(src_id)['x']), 2, 'big', signed=False) + int.to_bytes(int(graph.getNode(src_id)['y']), 2, 'big', signed=False)
                     else:
                         pl += payload[plindex+1:plindex+1+ct.POS_LEN]
-                        # logger.error(f"x: {int.from_bytes(payload[plindex:plindex+2], 'big', signed=False)} y: {int.from_bytes(payload[plindex+2:plindex+ct.POS_LEN], 'big', signed=False)}")
                         plindex += ct.POS_LEN+1
-                        # print(f'index: {index}\n')
-                        # print(f'plindex: {plindex}\n')
                 else:
-                    # logger.error(f"x: {int(graph.getNode(src_id)['x'])} y: {int(graph.getNode(src_id)['y'])}")
                     pl += int.to_bytes(int(graph.getNode(src_id)['x']), 2, 'big', signed=False) + int.to_bytes(int(graph.getNode(src_id)['y']), 2, 'big', signed=False)
                 if (index+pl_size) > plindex:
                     if payload[plindex] != ct.INFO_INDEX:
@@ -851,8 +618,6 @@ class Controller:
                     else:
                         pl += payload[plindex+1:plindex+1+ct.INFO_LEN]
                         plindex += ct.INFO_LEN+1
-                        # print(f'index: {index}\n')
-                        # print(f'plindex: {plindex}\n')
                 else:
                     pl += int.to_bytes(0, ct.INFO_LEN, 'big', signed=False)
                     datatype = setBitRange(int.from_bytes(pl[ct.INFO_INDEX:ct.INFO_INDEX+ct.INFO_LEN], 'big', signed=False), ct.TYP_BIT_INDEX, ct.TYP_BIT_LEN, SensorType.fromStringToInt(graph.getNode(src_id)['datatype']))       
@@ -866,8 +631,6 @@ class Controller:
                     else:
                         pl += payload[plindex+1:plindex+1+ct.PORT_LEN]
                         plindex += ct.PORT_LEN+1
-                        # print(f'index: {index}\n')
-                        # print(f'plindex: {plindex}\n')
                 else:
                     pl += int.to_bytes(graph.getNode(src_id)['port']-ct.BASE_NODE_PORT, ct.PORT_LEN, 'big', signed=False)
                 if (index+pl_size) > plindex:
@@ -886,8 +649,6 @@ class Controller:
                         tmppl = bytearray()
                         for i in range(ngscount):
                             ngsrssi[str(packet.getNet())+'.'+Addr(payload[plindex+i*ct.NEIGH_LEN+1]+payload[plindex+i*ct.NEIGH_LEN+2]).__str__()] = payload[plindex+i*ct.NEIGH_LEN+3]
-                        # print(f'index: {index}\n')
-                        # print(f'plindex: {plindex}\n')
                         edges = list(graph.getGraph().edges(nbunch=src_id, data=True, keys=True))
                         for edge in edges:
                             for i in range(ngscount):
@@ -918,15 +679,8 @@ class Controller:
             if aggrtype == ct.DATA:
                 p.setPayload(pl)
                 p = DataPacket(p.toByteArray())
-            # logger.error(f'src: {p.getSrc().__str__()}')
-            # logger.error(f'TS: {p.getTS()}')
-            # logger.error(f'packet src: {p.getSrc().__str__()} dst:{p.getDst().__str__()} timestamp:{p.getTS()}')
             index += pl_size+1
             plindex = index
-            # print(f'index: {index}\n')
-            # print(f'plindex: {plindex}\n')
-            # print('constucted packet:\n')
-            # logger.error(' '.join(format(i, '08b') for i in p.toByteArray())) 
             packets.append(p)
         return packets
 
@@ -993,30 +747,15 @@ class Controller:
                 data.setSrc(req.getDst())
                 await self.sendNetworkPacket(data, sink, sinkAddr=req.getDst())
                 
-                # for i in range(len(std_route) -1):
-                #     rule = (sinkNode, dstNode, std_route[i].__str__(), std_route[i+1].__str__())
-                #     self.flowReqStats[rule].append({'reqtime': time.time(), 'setuptime': time.time() - ct.RL_IDLE/4}) 
-                #     if not self.rule2id.get(rule):
-                #         self.rule2id[rule] = len(self.rule2id)
-                #     self.flowSetupSeq.append([time.time(), time.time() - ct.RL_IDLE/4, self.rule2id[rule]])
-
             #Flow setup rules from the sink to the request cur (sink_to_cur route)
             _, stc_route = rt.getRoute(sink, cur)
             if stc_route:
                 await self.pathRulesSetup(net=net, sinkId=sink, sinkAddr=req.getDst(), src=req.getDst(), route=stc_route)
                 
-                # for i in range(len(stc_route) -1):
-                #     rule = (sinkNode, curNode, stc_route[i].__str__(), stc_route[i+1].__str__())
-                #     self.flowReqStats[rule].append({'reqtime': time.time(), 'setuptime': time.time() - ct.RL_IDLE/4}) 
-                #     if not self.rule2id.get(rule):
-                #         self.rule2id[rule] = len(self.rule2id)
-                #     self.flowSetupSeq.append([time.time(), time.time() - ct.RL_IDLE/4, self.rule2id[rule]])
-
             #Flow setup rules from the request cur to the flow destination (cur_to_dst route)     
             cost, route = rt.getRoute(cur, dst)
             features = []
             if route:
-                # print(f'routing path from {cur} to {dst}: {route}')
                 await self.pathRulesSetup(net=net, sinkId=sink, sinkAddr=req.getDst(), src=req.getDst(), route=route)
                 
                 for i in range(len(route) -1):
@@ -1024,15 +763,7 @@ class Controller:
                     self.flowReqStats[rule].append({'reqtime': time.time(), 'setuptime': time.time() - ct.RL_IDLE/4}) 
                     if not self.rule2id.get(rule):
                         self.rule2id[rule] = len(self.rule2id)
-                    self.flowSetupSeq.append([time.time(), time.time() - ct.RL_IDLE/4, self.rule2id[rule]])
-                    
-                    # features.append([srcNode, dstNode, route[i].__str__(), route[i+1].__str__(), reqtime, setuptime])                     
-                # import pandas as pd
-                # import numpy as np
-                # dataset = pd.DataFrame(features)
-                # dataset.to_csv('outputs/flowsetupstats.csv', mode='a+', sep='\t', index=False)                
-                # route = pd.DataFrame(np.concatenate((np.array([[srcNode, dstNode, curNode, sinkNode]]), np.array([route])), axis=1))
-                # route.to_csv('outputs/routes.csv', mode='a+', sep='\t', index=False)
+                    self.flowSetupSeq.append([time.time(), time.time() - ct.RL_IDLE/4, self.rule2id[rule]])                    
             
         except Exception as e:
             logger.warn(e)
@@ -1060,56 +791,30 @@ class Controller:
             if route:
                 for i in range(len(route) -1):
                     rule = (srcNode, dstNode, route[i].__str__(), route[i+1].__str__())
-                    #Flow Requests Statistics                
-                    # self.flowReqStats[key]['reqcount'] += 1
-                    # self.flowReqStats[key]['reqinterarrivaltime'], 
-                    # self.flowReqStats[key]['reqtime'] = getInterArrivalTime(
-                    #     self.flowReqStats[key]['reqtime'], 
-                    #     self.flowReqStats[key]['reqinterarrivaltime'])
+                    #Flow Requests Statistics  
                     self.flowReqStats[rule].append({'reqtime': time.time(), 'setuptime': time.time() - ct.RL_IDLE/4}) 
                     if not self.rule2id.get(rule):
                         self.rule2id[rule] = len(self.rule2id)
                     self.flowSetupSeq.append([time.time(), time.time() - ct.RL_IDLE/4, self.rule2id[rule]])
             
-            # print(f'routing path from {cur} to {dst}: {route}')
-        
             ruleFwd = None
             ruleBwd = None
             index = 0
             for node in route:   
                 cost, toSinkRoute = rt.getRoute(src=sink, dst=(str(net) + "." + node.__str__()))
-                # print('to sink route from {} to {}: {}'.format(sink, (str(net) + "." + node.__str__()), toSinkRoute))
                 tmpIndex = 0
                 for toSinkNode in toSinkRoute:
-                    # print('toSinkNode', toSinkNode.__str__())
                     if toSinkNode.__str__() == node.__str__():
                         if node.__str__() != route[len(route) - 1].__str__():
                             ruleFwd = Entry()                            
                             ruleFwd.addWindow(Window().setOperator(ct.EQUAL).setSize(ct.W_SIZE_1).setLhsOperandType(ct.PACKET).setLhs(ct.DST_INDEX).setRhsOperandType(ct.CONST).setRhs(route[len(route) - 1].intValue()))
                             ruleFwd.addAction(ForwardUnicastAction(nxtHop=route[index + 1]))                               
                             await self.addNodeRule(net, sinkAddr, toSinkNode, ruleFwd)
-                            # await self.setNodeRule(net, sinkAddr, toSinkNode, ruleFwd)
-                        # ruleBwd = Entry()
-                        # ruleBwd.addWindow(Window().setOperator(ct.EQUAL).setSize(ct.W_SIZE_1).setLhsOperandType(ct.PACKET).setLhs(ct.DST_INDEX).setRhsOperandType(ct.CONST).setRhs(toSinkRoute[0].intValue()))
-                        # ruleBwd.addAction(ForwardUnicastAction(nxtHop=toSinkRoute[tmpIndex - 1]))
-                        # await self.addNodeRule(net, sinkAddr, toSinkNode, ruleBwd)  
-                        # if node.__str__() != route[0].__str__():                 
-                        #     ruleBwd = Entry()
-                        #     ruleBwd.addWindow(Window().setOperator(ct.EQUAL).setSize(ct.W_SIZE_1).setLhsOperandType(ct.PACKET).setLhs(ct.DST_INDEX).setRhsOperandType(ct.CONST).setRhs(route[0].intValue()))
-                        #     ruleBwd.addAction(ForwardUnicastAction(nxtHop=route[index - 1]))
-                        #     self.addNodeRule(net, sinkAddr, toSinkNode, ruleBwd)  
-                            
                     else:
                         ruleFwd = Entry()
                         ruleFwd.addWindow(Window().setOperator(ct.EQUAL).setSize(ct.W_SIZE_1).setLhsOperandType(ct.PACKET).setLhs(ct.DST_INDEX).setRhsOperandType(ct.CONST).setRhs(toSinkRoute[len(toSinkRoute) - 1].intValue()))
                         ruleFwd.addAction(ForwardUnicastAction(nxtHop=toSinkRoute[tmpIndex + 1]))
                         await self.addNodeRule(net, sinkAddr, toSinkNode, ruleFwd)
-                        # await self.setNodeRule(net, sinkAddr, toSinkNode, ruleFwd)
-                        # if tmpIndex != 0:
-                        #     ruleBwd = Entry()
-                        #     ruleBwd.addWindow(Window().setOperator(ct.EQUAL).setSize(ct.W_SIZE_1).setLhsOperandType(ct.PACKET).setLhs(ct.DST_INDEX).setRhsOperandType(ct.CONST).setRhs(toSinkRoute[0].intValue()))
-                        #     ruleBwd.addAction(ForwardUnicastAction(nxtHop=toSinkRoute[tmpIndex - 1]))
-                        #     await self.addNodeRule(net, sinkAddr, toSinkNode, ruleBwd)  
                     tmpIndex += 1                    
                 index += 1    
             data.setSrc(req.getDst())
@@ -1151,7 +856,6 @@ class ATCP_ctrl(Controller):
     async def manageRoutingRequest(self, req:RequestPacket, data:DataPacket):
         #TODO if path size exceed the open path payload limit
         await self.srRulesSetup(req, data)
-        # self.h2hRuleSetup(req, data)
     
     def ctrlLearningWorker(self):
         async def async_thread():
@@ -1177,7 +881,6 @@ class NSFP_ctrl(Controller):
     async def manageRoutingRequest(self, req:RequestPacket, data:DataPacket):
         #TODO if path size exceed the open path payload limit
         await self.srRulesSetup(req, data)
-        # self.h2hRuleSetup(req, data)
     
     def ctrlLearningWorker(self):
         async def async_thread():

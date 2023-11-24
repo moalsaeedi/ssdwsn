@@ -22,7 +22,6 @@ import time
 from multiprocessing import Process
 import numpy as np
 from networkx.classes.function import density
-import asyncio, logging
 from ssdwsn.data.sensor import SensorType
 from ssdwsn.util.constants import Constants as ct
 from ssdwsn.util.utils import getColorVal
