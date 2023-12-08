@@ -12,7 +12,9 @@ source install.sh uninstall
 
 After running the simulation:
 Simulator URL: http://localhost:4455/
+
 Tensorboard URL: http://localhost:6006/
+
 
 
 Documentation will be pushed soon ...
