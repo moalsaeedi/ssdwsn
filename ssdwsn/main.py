@@ -483,7 +483,7 @@ async def connect():
         / __/ __/ _ \ | /| / / __/ |/ /  \n \
        _\ \_\ \/ // / |/ |/ /\ \/    /   \n \
       /___/___/____/|__/|__/___/_/|_/    \n \
-    Click Here!"
+    ctrl + Click Here!"
     target = f"http://localhost:{ct.SIM_PORT}"
     logger.info(f'Simulation is running ...\n \u001b]8;;{target}\u001b\\{txt}\u001b]8;;\u001b\\\n')
     # await sio.wait()

@@ -24,8 +24,9 @@ export_deps() {
 
 install() {
     # Check if virtualenv is installed, if not, install it
-    install pipreqs
-    install -U pip
+    pip install -U pip
+    pip install pipreqs
+    pip install Cython
     check_virtualenv
     
     local env_name=${1:-".ssdwsn_venv"}
@@ -62,8 +63,18 @@ run() {
         echo "Virtual environment '$env_name' not found. Use '$0 install [env_name]' to install SSDWSN."
         return 1
     fi
+    source "./$env_name/bin/activate"
+    tensorboard --logdir output/logs &
     sudo python3 ssdwsn/main.py
-    tensorboard --logdir output/logs
+}
+
+clean() {
+
+    local env_name=${1:-".ssdwsn_venv"}
+    sudo rm -r build
+    sudo rm -r dist
+    sudo rm -r ssdwsn.egg-info
+    sudo rm -r outputs/logs/*
 }
 
 uninstall() {
@@ -83,6 +94,7 @@ print_help() {
     echo "Options:"
     echo "  install      Install SSDWSN"
     echo "  run      Run SSDWSN"
+    echo "  clean      clean SSDWSN setup files and logs"
     echo "  uninstall    Uninstall SSDWSN"
     echo "  export      Export installed dependencies to requirements.txt within a virtual environment (default name: .ssdwsn_venv)"
 }
@@ -98,6 +110,9 @@ case "$1" in
         ;;
     "run")
         run "$2"
+        ;;
+    "clean")
+        clean "$2"
         ;;
     "uninstall")
         uninstall "$2"
