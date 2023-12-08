@@ -54,6 +54,7 @@ install() {
     if [ -f "setup.py" ]; then
         pip install -e .
     fi
+    sudo python3 setup.py install
 }
 
 run() {
