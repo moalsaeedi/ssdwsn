@@ -233,7 +233,8 @@ def cleanUp():
         # p.terminate() 
 
     try:
-        system("pkill -9 python3 | kill -9 $(ps -A | grep python | awk '{print $1}')")
+        system("./install.sh clean")
+        # system("pkill -9 python3 | kill -9 $(ps -A | grep python | awk '{print $1}')")
         # cmd="pkill -9 python3 | kill -9 $(ps -A | grep python | awk '{print $1}')"
         # p = runCmd(cmd)    
         # p.terminate()
@@ -465,16 +466,26 @@ def run_loop_in_process(nodetype, node, settings, topofilename, networkGraph=Non
 
 def initGraph():
     # cmd='nohup python3 {} &'.format(ct.SIM_APP)  
-    # cmd='python3 {} asgi &'.format(ct.SIM_APP)  
-    cmd='python3 {} &'.format(ct.SIM_APP)  
+    # cmd='python3 {} asgi &'.format(ct.SIM_APP)
+    cmd=f'python3 {ct.SIM_APP}'
     process = runCmd(cmd)
     # RUNNING_PS.append(process) 
     
 async def connect():
-    initGraph()
+    # initGraph()
     await asyncio.sleep(2)
     sio.on("connect", _handle_connect)
-    await sio.connect(ct.SIM_URL)
+
+    connected = False
+    while not connected:
+        try:
+            await sio.connect(ct.SIM_URL)
+            print("Socket established")
+            connected = True
+        except Exception as ex:
+            print("Failed to establish initial connnection to server:", type(ex).__name__)
+            await asyncio.sleep(2)
+
     # await asyncio.sleep(2)
     # while not sio.connected:
     #     time.sleep(0.025)
@@ -484,7 +495,7 @@ async def connect():
        _\ \_\ \/ // / |/ |/ /\ \/    /   \n \
       /___/___/____/|__/|__/___/_/|_/    \n \
     ctrl + Click Here!"
-    target = f"http://localhost:{ct.SIM_PORT}"
+    target = f"{ct.SIM_URL}"
     logger.info(f'Simulation is running ...\n \u001b]8;;{target}\u001b\\{txt}\u001b]8;;\u001b\\\n')
     # await sio.wait()
     while True:

@@ -3,7 +3,7 @@
 check_virtualenv() {
     if ! command -v virtualenv &> /dev/null; then
         echo "virtualenv is not installed. Installing..."
-        python3 -m pip install --user virtualenv
+        sudo python3.9 -m pip install --user virtualenv
         echo "virtualenv installation complete."
     fi
 }
@@ -37,24 +37,22 @@ install() {
         if [ -f "requirements.txt" ]; then
             pip install -r ./requirements.txt
         fi
-
         if [ -f "setup.py" ]; then
             pip install -e .
         fi
         return 1
     fi
 
-    python3 -m venv "$env_name"
+    sudo python3.9 -m venv "$env_name"
+    sudo chmod -R 777 "."
     source "./$env_name/bin/activate"
 
     if [ -f "requirements.txt" ]; then
         pip install -r ./requirements.txt
     fi
-
     if [ -f "setup.py" ]; then
         pip install -e .
-    fi
-    sudo python3 setup.py install
+    fi    
 }
 
 run() {
@@ -64,9 +62,15 @@ run() {
         echo "Virtual environment '$env_name' not found. Use '$0 install [env_name]' to install SSDWSN."
         return 1
     fi
+    lsof -nti:6006 | xargs kill -9
+    lsof -nti:4455 | xargs kill -9
     source "./$env_name/bin/activate"
+    echo which python
+    sudo "./$env_name/bin/python3.9" setup.py install
+    sudo chmod -R 777 "."
     tensorboard --logdir output/logs &
-    sudo python3 ssdwsn/main.py
+    "./$env_name/bin/python3.9" ssdwsn/util/plot/app.py &
+    sudo "./$env_name/bin/python3.9" ssdwsn/main.py
 }
 
 clean() {
@@ -76,6 +80,9 @@ clean() {
     sudo rm -r dist
     sudo rm -r ssdwsn.egg-info
     sudo rm -r outputs/logs/*
+    lsof -nti:6006 | xargs kill -9
+    lsof -nti:4455 | xargs kill -9
+    "pkill -9 ./$env_name/bin/python3.9 | kill -9 $(ps -A | grep python | awk '{print $1}')"
 }
 
 uninstall() {
@@ -87,7 +94,7 @@ uninstall() {
     fi
 
     deactivate
-    rm -rf "$env_name"
+    sudo rm -rf "$env_name"
 }
 
 print_help() {
