@@ -80,6 +80,12 @@ clean() {
     sudo rm -r dist
     sudo rm -r ssdwsn.egg-info
     sudo rm -r outputs/logs/*
+    sudo rm -r ssdwsn/__pycache__
+    sudo rm -r ssdwsn/app/__pycache__
+    sudo rm -r ssdwsn/ctrl/__pycache__
+    sudo rm -r ssdwsn/data/__pycache__
+    sudo rm -r ssdwsn/openflow/__pycache__
+    sudo rm -r ssdwsn/util/__pycache__
     lsof -nti:6006 | xargs kill -9
     lsof -nti:4455 | xargs kill -9
     "pkill -9 ./$env_name/bin/python3.9 | kill -9 $(ps -A | grep python | awk '{print $1}')"
