@@ -3,11 +3,13 @@
 # INSTALLATION
 
 ## Install SSDWSN
-$ git clone https://github.com/moalsaeedi/ssdwsn.git
-$ cd ssdwsn
-$ source install.sh install
+'''
+git clone https://github.com/moalsaeedi/ssdwsn.git
+cd ssdwsn
+source install.sh install
 ## Run the simulation
-$ source install.sh run
+source install.sh run
+'''
 ## Uninstall SSDWSN
 $ source install.sh uninstall
 
