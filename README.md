@@ -1,14 +1,17 @@
-Scalable Software-Defined Wireless Sensor Networks (SSDWSN)
+# Scalable Software-Defined Wireless Sensor Networks (SSDWSN)
 
-# Install SSDWSN----------------------------------
-git clone https://github.com/moalsaeedi/ssdwsn.git
-cd ssdwsn
-source install.sh install
-# Run the simulation
-source install.sh run
-# Uninstall SSDWSN
-source install.sh uninstall
-#-------------------------------------------------
+# INSTALLATION
+
+## Install SSDWSN
+<!-- git clone https://github.com/moalsaeedi/ssdwsn.git -->
+<!-- cd ssdwsn -->
+<!-- source install.sh install -->
+## Run the simulation
+<!-- source install.sh run -->
+## Uninstall SSDWSN
+<!-- source install.sh uninstall -->
+
+# INFORMATION
 
 After running the simulation:
 Simulator URL: http://localhost:4455/
