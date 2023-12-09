@@ -16,3 +16,6 @@ Tensorboard URL: http://localhost:6006/
 
 
 Documentation will be pushed soon ...
+
+
+![Alt text](https://github.com/moalsaeedi/outputs/ssdwsn-snapshot.png?raw=true)
