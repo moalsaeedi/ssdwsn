@@ -98,7 +98,8 @@ uninstall() {
         echo "Virtual environment '$env_name' not found."
         return 1
     fi
-
+    
+    clean
     deactivate
     sudo rm -rf "$env_name"
 }
