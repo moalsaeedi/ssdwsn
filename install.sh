@@ -73,7 +73,7 @@ run() {
     sudo rm -r outputs/logs/*
     sudo rm -r outputs/plots/*
     sudo chmod -R 777 "."
-    tensorboard --logdir output/logs &
+    tensorboard --logdir outputs/logs &
     "./$env_name/bin/python3.9" ssdwsn/util/plot/app.py &
     sudo "./$env_name/bin/python3.9" ssdwsn/main.py
 }
