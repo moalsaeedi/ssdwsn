@@ -49,7 +49,7 @@ logger.addHandler(ch)
 
 seed_everything(33)
 T.cuda.empty_cache()
-num_gpus = T.cuda.device_count()
+num_gpus = T.cuda.device_count() if T.cuda.is_available() else 0
 device = f'cuda:{num_gpus-1}' if T.cuda.is_available() else 'cpu'
 
 class PPO_ATCP(LightningModule):
@@ -785,8 +785,8 @@ class PPO_NSFP(LightningModule):
         # checkpoint_callback = ModelCheckpoint(dirpath='outputs/logs')
 
         print('hereeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee1')
-        trainer = Trainer(
-            gpus=num_gpus, 
+        trainer = Trainer(devices="auto", accelerator="auto",
+            # gpus=num_gpus, 
             max_epochs=-1, #infinite training
             log_every_n_steps=1,
             # callbacks=[checkpoint_callback],
