@@ -66,11 +66,11 @@ run() {
     lsof -nti:4455 | xargs kill -9
     source "./$env_name/bin/activate"
     echo which python
-    sudo "./$env_name/bin/python3.9" setup.py install
+    sudo "./$env_name/lib/python3.9" setup.py install
     sudo chmod -R 777 "."
     tensorboard --logdir output/logs &
-    "./$env_name/bin/python3.9" ssdwsn/util/plot/app.py &
-    sudo "./$env_name/bin/python3.9" ssdwsn/main.py
+    "./$env_name/lib/python3.9" ssdwsn/util/plot/app.py &
+    sudo "./$env_name/lib/python3.9" ssdwsn/main.py
 }
 
 clean() {
@@ -88,7 +88,7 @@ clean() {
     sudo rm -r ssdwsn/util/__pycache__
     lsof -nti:6006 | xargs kill -9
     lsof -nti:4455 | xargs kill -9
-    "pkill -9 ./$env_name/bin/python3.9 | kill -9 $(ps -A | grep python | awk '{print $1}')"
+    "pkill -9 ./$env_name/lib/python3.9 | kill -9 $(ps -A | grep python | awk '{print $1}')"
 }
 
 uninstall() {
