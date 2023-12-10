@@ -67,6 +67,8 @@ run() {
     source "./$env_name/bin/activate"
     echo which python
     sudo "./$env_name/lib/python3.9" setup.py install
+    sudo mkdir outputs/logs
+    sudo mkdir outputs/plots
     sudo chmod -R 777 "."
     tensorboard --logdir output/logs &
     "./$env_name/lib/python3.9" ssdwsn/util/plot/app.py &
@@ -79,7 +81,8 @@ clean() {
     sudo rm -r build
     sudo rm -r dist
     sudo rm -r ssdwsn.egg-info
-    sudo rm -r outputs/logs/*
+    sudo rm -r outputs/logs
+    sudo rm -r outputs/plots
     sudo rm -r ssdwsn/__pycache__
     sudo rm -r ssdwsn/app/__pycache__
     sudo rm -r ssdwsn/ctrl/__pycache__
