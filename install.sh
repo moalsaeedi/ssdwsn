@@ -46,6 +46,8 @@ install() {
     sudo python3.9 -m venv "$env_name"
     sudo chmod -R 777 "."
     source "./$env_name/bin/activate"
+    sudo mkdir outputs/logs
+    sudo mkdir outputs/plots
 
     if [ -f "requirements.txt" ]; then
         pip install -r ./requirements.txt
@@ -68,7 +70,8 @@ run() {
     source "./$env_name/bin/activate"
     echo which python
     sudo "./$env_name/bin/python3.9" setup.py install
-    sudo rm -r outputs/logs
+    sudo rm -r outputs/logs/*
+    sudo rm -r outputs/plots/*
     sudo chmod -R 777 "."
     tensorboard --logdir outputs/logs &
     "./$env_name/bin/python3.9" ssdwsn/util/plot/app.py &
