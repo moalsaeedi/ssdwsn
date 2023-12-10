@@ -375,14 +375,14 @@ class PPO_ATCP(LightningModule):
 
     async def run(self):
         # Start tensorboard.
-        try:
-            quietRun('rm -r outputs/logs/')
-            # quietRun('rm -r outputs/logs/experiences.csv')
-            # quietRun('rm -r outputs/logs/lightning_logs/version_0')
-            # quietRun('rm -r outputs/content/videos/')
-            # quietRun('tensorboard --logdir outputs/logs/')
-        except Exception as ex:
-            logger.warn(ex)
+        # try:
+        #     quietRun('rm -r outputs/logs/')
+        #     # quietRun('rm -r outputs/logs/experiences.csv')
+        #     # quietRun('rm -r outputs/logs/lightning_logs/version_0')
+        #     # quietRun('rm -r outputs/content/videos/')
+        #     # quietRun('tensorboard --logdir outputs/logs/')
+        # except Exception as ex:
+        #     logger.warn(ex)
 
         # algo = SAC('SAC_CTRL_SSDWSN', lr=1e-3, alpha=0.002, tau=0.1)
         logger.info('START TRAINING ...')
@@ -755,14 +755,14 @@ class PPO_NSFP(LightningModule):
 
     async def run(self):
         # Start tensorboard.
-        try:
-            quietRun('rm -r outputs/logs/')
-            # quietRun('rm -r outputs/logs/experiences.csv')
-            # quietRun('rm -r outputs/logs/lightning_logs/version_0')
-            # quietRun('rm -r outputs/content/videos/')
-            # quietRun('tensorboard --logdir outputs/logs/')
-        except Exception as ex:
-            logger.warn(ex)
+        # try:
+        #     quietRun('rm -r outputs/logs/')
+        #     # quietRun('rm -r outputs/logs/experiences.csv')
+        #     # quietRun('rm -r outputs/logs/lightning_logs/version_0')
+        #     # quietRun('rm -r outputs/content/videos/')
+        #     # quietRun('tensorboard --logdir outputs/logs/')
+        # except Exception as ex:
+        #     logger.warn(ex)
 
         # algo = SAC('SAC_CTRL_SSDWSN', lr=1e-3, alpha=0.002, tau=0.1)
         logger.info('START TRAINING ...')
@@ -988,13 +988,13 @@ class PPO_MultiAgent(LightningModule):
 
     async def run(self):
         # Start tensorboard.
-        try:
-            quietRun(f'rm -r outputs/logs/{self.id}_experiences.csv')
-            quietRun('rm -r outputs/logs/lightning_logs/')
-            # quietRun('rm -r outputs/content/videos/')
-            # quietRun('tensorboard --logdir outputs/logs/')
-        except Exception as ex:
-            logger.warn(ex)
+        # try:
+        #     quietRun(f'rm -r outputs/logs/{self.id}_experiences.csv')
+        #     quietRun('rm -r outputs/logs/lightning_logs/')
+        #     # quietRun('rm -r outputs/content/videos/')
+        #     # quietRun('tensorboard --logdir outputs/logs/')
+        # except Exception as ex:
+        #     logger.warn(ex)
 
         # algo = SAC('SAC_CTRL_SSDWSN', lr=1e-3, alpha=0.002, tau=0.1)
         logger.info('START TRAINING ...')
