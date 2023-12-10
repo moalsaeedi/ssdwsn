@@ -785,7 +785,7 @@ class PPO_NSFP(LightningModule):
         # checkpoint_callback = ModelCheckpoint(dirpath='outputs/logs')
 
         print('hereeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee1')
-        trainer = Trainer(devices="auto", accelerator="auto",
+        trainer = Trainer(devices="auto", accelerator="auto",num_nodes=num_gpus,
             # gpus=num_gpus, 
             max_epochs=-1, #infinite training
             log_every_n_steps=1,
