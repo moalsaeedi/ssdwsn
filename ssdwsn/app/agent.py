@@ -387,11 +387,8 @@ class PPO_ATCP(LightningModule):
         # algo = SAC('SAC_CTRL_SSDWSN', lr=1e-3, alpha=0.002, tau=0.1)
         logger.info('START TRAINING ...')
         # self.tb_logger = SummaryWriter(log_dir="outputs/logs")
-        try:
-            self.tb_logger = SummaryWriter(log_dir="outputs/logs")
-            quietRun('chmod -R 777 outputs/logs')
-        except Exception as ex:
-            logger.warn(ex)
+        self.tb_logger = SummaryWriter(log_dir="outputs/logs")
+        quietRun('chmod -R 777 outputs/logs')
         # tb_logger = CSVLogger(save_dir="outputs/logs")
         '''
         checkpoint_callback = ModelCheckpoint(
@@ -560,6 +557,7 @@ class PPO_NSFP(LightningModule):
     
     @T.no_grad()
     def play_episodes(self, policy=None):
+        print('hereeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee4')
         obs, nodes, _, _ = self.reset()
         print('COLLECTING DATA ....')     
         for step in range(self.hparams.samples_per_epoch):
@@ -581,7 +579,8 @@ class PPO_NSFP(LightningModule):
             #     pd.DataFrame(done, columns=['done']),
             #     pd.DataFrame(info, columns=['info'])],
             #     axis=1).to_csv('outputs/logs/experiences.csv', mode='a', sep='\t', index=False, header=not path.exists('outputs/logs/experiences.csv'))
-            self.pltMetrics(reward, nodes, obs, nxt_obs, nxt_sink_obs)    
+            self.pltMetrics(reward, nodes, obs, nxt_obs, nxt_sink_obs) 
+            print('hereeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee5')   
             obs = nxt_obs            
             self.ep_step += 1
 
@@ -771,11 +770,8 @@ class PPO_NSFP(LightningModule):
         # algo = SAC('SAC_CTRL_SSDWSN', lr=1e-3, alpha=0.002, tau=0.1)
         logger.info('START TRAINING ...')
         # self.tb_logger = SummaryWriter(log_dir="outputs/logs")
-        try:
-            self.tb_logger = SummaryWriter(log_dir="outputs/logs")
-            quietRun('chmod -R 777 outputs/logs')
-        except Exception as ex:
-            logger.warn(ex)
+        self.tb_logger = SummaryWriter(log_dir="outputs/logs")
+        quietRun('chmod -R 777 outputs/logs')
         # tb_logger = CSVLogger(save_dir="outputs/logs")
         '''
         checkpoint_callback = ModelCheckpoint(
@@ -788,6 +784,7 @@ class PPO_NSFP(LightningModule):
         '''
         # checkpoint_callback = ModelCheckpoint(dirpath='outputs/logs')
 
+        print('hereeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee1')
         trainer = Trainer(
             gpus=num_gpus, 
             max_epochs=-1, #infinite training
@@ -797,7 +794,9 @@ class PPO_NSFP(LightningModule):
             reload_dataloaders_every_n_epochs = 1,
             # callbacks=[EarlyStopping(monitor='outputs/Q-Loss', mode='min', patience=1000)]
         )
+        print('hereeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee2')
         T.autograd.detect_anomaly(True)
+        print('hereeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee3')
         self.play_episodes()
         trainer.fit(self)
 
@@ -836,6 +835,7 @@ class PPO_MultiAgent(LightningModule):
     def play_episodes(self, policy=None):
         # self.buffer = []
         # self.env.num_samples = 0
+        print('hereeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee3')
         self.ep_value_loss = []
         self.ep_policy_loss = []
         self.ep_entropy = []
@@ -1006,12 +1006,10 @@ class PPO_MultiAgent(LightningModule):
 
         # algo = SAC('SAC_CTRL_SSDWSN', lr=1e-3, alpha=0.002, tau=0.1)
         logger.info('START TRAINING ...')
-        try:
-            self.tb_logger = SummaryWriter(log_dir="outputs/logs")
-            quietRun('chmod -R 777 outputs/logs')
-        except Exception as ex:
-            logger.warn(ex)
+        self.tb_logger = SummaryWriter(log_dir="outputs/logs")
+        quietRun('chmod -R 777 outputs/logs')
         # tb_logger = CSVLogger(save_dir="outputs/logs")
+        print('hereeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee1')
         trainer = Trainer(
             gpus=num_gpus, 
             max_epochs=-1, #infinite training
@@ -1022,5 +1020,6 @@ class PPO_MultiAgent(LightningModule):
             # callbacks=[EarlyStopping(monitor='outputs/Q-Loss', mode='min', patience=1000)]
         )
         
+        print('hereeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee2')
         self.play_episodes()
         trainer.fit(self) 
