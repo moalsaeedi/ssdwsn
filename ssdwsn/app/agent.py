@@ -387,7 +387,11 @@ class PPO_ATCP(LightningModule):
         # algo = SAC('SAC_CTRL_SSDWSN', lr=1e-3, alpha=0.002, tau=0.1)
         logger.info('START TRAINING ...')
         # self.tb_logger = SummaryWriter(log_dir="outputs/logs")
-        self.tb_logger = SummaryWriter(log_dir="outputs/logs")
+        try:
+            self.tb_logger = SummaryWriter(log_dir="outputs/logs")
+            quietRun('chmod -R 777 outputs/logs')
+        except Exception as ex:
+            logger.warn(ex)
         # tb_logger = CSVLogger(save_dir="outputs/logs")
         '''
         checkpoint_callback = ModelCheckpoint(
@@ -767,7 +771,11 @@ class PPO_NSFP(LightningModule):
         # algo = SAC('SAC_CTRL_SSDWSN', lr=1e-3, alpha=0.002, tau=0.1)
         logger.info('START TRAINING ...')
         # self.tb_logger = SummaryWriter(log_dir="outputs/logs")
-        self.tb_logger = SummaryWriter(log_dir="outputs/logs")
+        try:
+            self.tb_logger = SummaryWriter(log_dir="outputs/logs")
+            quietRun('chmod -R 777 outputs/logs')
+        except Exception as ex:
+            logger.warn(ex)
         # tb_logger = CSVLogger(save_dir="outputs/logs")
         '''
         checkpoint_callback = ModelCheckpoint(
@@ -998,14 +1006,18 @@ class PPO_MultiAgent(LightningModule):
 
         # algo = SAC('SAC_CTRL_SSDWSN', lr=1e-3, alpha=0.002, tau=0.1)
         logger.info('START TRAINING ...')
-        tb_logger = TensorBoardLogger(save_dir="outputs/logs")
+        try:
+            self.tb_logger = SummaryWriter(log_dir="outputs/logs")
+            quietRun('chmod -R 777 outputs/logs')
+        except Exception as ex:
+            logger.warn(ex)
         # tb_logger = CSVLogger(save_dir="outputs/logs")
         trainer = Trainer(
             gpus=num_gpus, 
             max_epochs=-1, #infinite training
             log_every_n_steps=1,
             callbacks=[TQDMProgressBar(refresh_rate=2)],
-            logger=tb_logger,
+            logger=self.tb_logger,
             reload_dataloaders_every_n_epochs = 1,
             # callbacks=[EarlyStopping(monitor='outputs/Q-Loss', mode='min', patience=1000)]
         )
