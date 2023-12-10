@@ -46,6 +46,8 @@ install() {
     sudo python3.9 -m venv "$env_name"
     sudo chmod -R 777 "."
     source "./$env_name/bin/activate"
+    sudo mkdir outputs/logs
+    sudo mkdir outputs/plots
 
     if [ -f "requirements.txt" ]; then
         pip install -r ./requirements.txt
@@ -62,13 +64,14 @@ run() {
         echo "Virtual environment '$env_name' not found. Use '$0 install [env_name]' to install SSDWSN."
         return 1
     fi
+    
     lsof -nti:6006 | xargs kill -9
     lsof -nti:4455 | xargs kill -9
     source "./$env_name/bin/activate"
     echo which python
     sudo "./$env_name/bin/python3.9" setup.py install
-    sudo mkdir outputs/logs
-    sudo mkdir outputs/plots
+    sudo rm -r outputs/logs/*
+    sudo rm -r outputs/plots/*
     sudo chmod -R 777 "."
     tensorboard --logdir output/logs &
     "./$env_name/bin/python3.9" ssdwsn/util/plot/app.py &
@@ -81,16 +84,12 @@ clean() {
     sudo rm -r build
     sudo rm -r dist
     sudo rm -r ssdwsn.egg-info
-    sudo rm -r outputs/logs
-    sudo rm -r outputs/plots
     sudo rm -r ssdwsn/__pycache__
     sudo rm -r ssdwsn/app/__pycache__
     sudo rm -r ssdwsn/ctrl/__pycache__
     sudo rm -r ssdwsn/data/__pycache__
     sudo rm -r ssdwsn/openflow/__pycache__
     sudo rm -r ssdwsn/util/__pycache__
-    lsof -nti:6006 | xargs kill -9
-    lsof -nti:4455 | xargs kill -9
     "pkill -9 ./$env_name/bin/python3.9 | kill -9 $(ps -A | grep python | awk '{print $1}')"
 }
 
