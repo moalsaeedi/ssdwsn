@@ -700,6 +700,7 @@ class PPO_NSFP(LightningModule):
 
         # rev_nxt_obs = self.env.scaler.inverse_transform(T.clone(nxt_obs_b.data).detach().cpu().numpy())
         
+        print('hereeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee7')
         state_values = self.value_net(obs_b)
 
         with T.no_grad():
@@ -798,6 +799,7 @@ class PPO_NSFP(LightningModule):
         T.autograd.detect_anomaly(True)
         print('hereeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee3')
         self.play_episodes()
+        print('hereeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee6')
         trainer.fit(self)
 
 class PPO_MultiAgent(LightningModule):
