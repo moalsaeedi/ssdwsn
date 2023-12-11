@@ -788,8 +788,6 @@ class PPO_NSFP(LightningModule):
 
         print('hereeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee1')
         trainer = Trainer(
-            devices=num_devices,
-            accelerator=device, 
             max_epochs=-1, #infinite training
             log_every_n_steps=1,
             # callbacks=[checkpoint_callback],
