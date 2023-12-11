@@ -49,8 +49,8 @@ logger.addHandler(ch)
 
 seed_everything(33)
 T.cuda.empty_cache()
-num_gpus = T.cuda.device_count() if T.cuda.is_available() else 0
-device = f'cuda:{num_gpus-1}' if T.cuda.is_available() else 'cpu'
+num_devices = T.cuda.device_count() if T.cuda.is_available() else cpu_count()
+device = f'cuda:{num_devices-1}' if T.cuda.is_available() else 'cpu'
 
 class PPO_ATCP(LightningModule):
     """ Adaptive Traffic Controll On-Policy PPO_DRL Agent
@@ -402,7 +402,8 @@ class PPO_ATCP(LightningModule):
         # checkpoint_callback = ModelCheckpoint(dirpath='outputs/logs')
 
         trainer = Trainer(
-            gpus=num_gpus, 
+            devices=num_devices,
+            accelerator=device, 
             max_epochs=-1, #infinite training
             log_every_n_steps=1,
             # callbacks=[checkpoint_callback],
@@ -786,8 +787,9 @@ class PPO_NSFP(LightningModule):
         # checkpoint_callback = ModelCheckpoint(dirpath='outputs/logs')
 
         print('hereeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee1')
-        trainer = Trainer(devices="auto", accelerator="auto",num_nodes=num_gpus,
-            # gpus=num_gpus, 
+        trainer = Trainer(
+            devices=num_devices,
+            accelerator=device, 
             max_epochs=-1, #infinite training
             log_every_n_steps=1,
             # callbacks=[checkpoint_callback],
@@ -1013,7 +1015,8 @@ class PPO_MultiAgent(LightningModule):
         # tb_logger = CSVLogger(save_dir="outputs/logs")
         print('hereeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee1')
         trainer = Trainer(
-            gpus=num_gpus, 
+            devices=num_devices,
+            accelerator=device, 
             max_epochs=-1, #infinite training
             log_every_n_steps=1,
             callbacks=[TQDMProgressBar(refresh_rate=2)],
