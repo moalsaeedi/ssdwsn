@@ -64,11 +64,10 @@ run() {
         echo "Virtual environment '$env_name' not found. Use '$0 install [env_name]' to install SSDWSN."
         return 1
     fi
-    
+
+    source "./$env_name/bin/activate"    
     lsof -nti:6006 | xargs kill -9
     lsof -nti:4455 | xargs kill -9
-    source "./$env_name/bin/activate"
-    echo which python
     sudo "./$env_name/bin/python3.9" setup.py install
     sudo rm -r outputs/logs/*
     sudo rm -r outputs/plots/*
