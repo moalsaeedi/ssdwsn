@@ -697,11 +697,11 @@ class PPO_NSFP(LightningModule):
 
     def training_step(self, batch, batch_idx, optimizer_idx):
 
+        print('hereeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee7')
         obs_b, log_prob_b, action_b, reward_b, done_b, nxt_obs_b = batch        
 
         # rev_nxt_obs = self.env.scaler.inverse_transform(T.clone(nxt_obs_b.data).detach().cpu().numpy())
         
-        print('hereeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee7')
         state_values = self.value_net(obs_b)
 
         with T.no_grad():
@@ -787,7 +787,7 @@ class PPO_NSFP(LightningModule):
         # checkpoint_callback = ModelCheckpoint(dirpath='outputs/logs')
 
         print('hereeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee1')
-        trainer = Trainer(
+        trainer = Trainer(            
             max_epochs=-1, #infinite training
             log_every_n_steps=1,
             # callbacks=[checkpoint_callback],
