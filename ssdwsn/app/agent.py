@@ -339,8 +339,7 @@ class PPO_ATCP(LightningModule):
         self.tb_logger.add_scalars('Training/Value/Loss', {
             'loss': value_loss
             }, global_step=self.global_step
-        )    
-        self.log('value_loss', value_loss)
+        )
 
         # policy_opt
         log_prob, _ = self.policy(obs_b)
@@ -367,10 +366,8 @@ class PPO_ATCP(LightningModule):
         #     'entropy': entropy.mean()
         #     }, global_step=self.global_step
         # )
-        self.log('policy_loss', policy_loss)
-        self.log('return', reward_b.sum())
         
-        self.log_dict({"value_loss": value_loss, "policy_loss": policy_loss}, prog_bar=True)
+        self.log_dict({"value_loss": value_loss, "policy_loss": policy_loss, "return":reward_b.sum()}, prog_bar=True)
                 
     def on_train_epoch_end(self, training_step_outputs):
         # if self.best_return > 0:
@@ -729,7 +726,6 @@ class PPO_NSFP(LightningModule):
             'loss': value_loss
             }, global_step=self.global_step
         )    
-        self.log('value_loss', value_loss)
 
         # policy_opt
         log_prob, _ = self.policy(obs_b)
@@ -756,10 +752,8 @@ class PPO_NSFP(LightningModule):
         #     'entropy': entropy.mean()
         #     }, global_step=self.global_step
         # )
-        self.log('policy_loss', policy_loss)
-        self.log('return', reward_b.sum())
 
-        self.log_dict({"value_loss": value_loss, "policy_loss": policy_loss}, prog_bar=True)
+        self.log_dict({"value_loss": value_loss, "policy_loss": policy_loss, "return": reward_b.sum()}, prog_bar=True)
                 
     def on_train_epoch_end(self, training_step_outputs):
         # if self.best_return > 0:
@@ -799,7 +793,6 @@ class PPO_NSFP(LightningModule):
         '''
         # checkpoint_callback = ModelCheckpoint(dirpath='outputs/logs')
 
-        print('hereeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee1')
         trainer = Trainer(
             accelerator='auto',      
             devices=num_devices,
@@ -810,11 +803,8 @@ class PPO_NSFP(LightningModule):
             reload_dataloaders_every_n_epochs = 1,
             # callbacks=[EarlyStopping(monitor='outputs/Q-Loss', mode='min', patience=1000)]
         )
-        print('hereeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee2')
         T.autograd.detect_anomaly(True)
-        print('hereeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee3')
         self.play_episodes()
-        print('hereeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee6')
         try:
             trainer.fit(self)
         except Exception as ex:
@@ -933,12 +923,12 @@ class PPO_MultiAgent(LightningModule):
             # rev_nxt_obs_b = self.env.max_obs * nxt_obs_b.detach().cpu().numpy()
             rev_nxt_obs_b = nxt_obs_b.detach().cpu().numpy()
             # rev_nxt_obs_b = self.env.scaler.inverse_transform(nxt_obs_b.detach().cpu().numpy())
-            self.log('episode/Return', reward_b.sum())
-            self.log('episode/Performance/Delay', rev_nxt_obs_b[:,1].mean())
-            self.log('episode/Performance/Throughput', rev_nxt_obs_b[:,2].mean())
-            self.log('episode/Performance/Enrgy_Consumption', rev_nxt_obs_b[:,3].mean())
-            self.log('episode/Performance/Dropped_Packets', rev_nxt_obs_b[:,10].mean())
-            self.log('episode/Performance/Resedual_Energy_var', rev_nxt_obs_b[:,18].mean())
+            # self.log('episode/Return', reward_b.sum())
+            # self.log('episode/Performance/Delay', rev_nxt_obs_b[:,1].mean())
+            # self.log('episode/Performance/Throughput', rev_nxt_obs_b[:,2].mean())
+            # self.log('episode/Performance/Enrgy_Consumption', rev_nxt_obs_b[:,3].mean())
+            # self.log('episode/Performance/Dropped_Packets', rev_nxt_obs_b[:,10].mean())
+            # self.log('episode/Performance/Resedual_Energy_var', rev_nxt_obs_b[:,18].mean())
         
         self.current_episode += 1
         value_loss = 0
@@ -986,10 +976,7 @@ class PPO_MultiAgent(LightningModule):
             # self.ep_policy_loss.append(loss.unsqueeze(0))
             # self.ep_entropy.append(entropy.mean().unsqueeze(0))
             
-        self.log('episode/ValueNet/Loss', value_loss)            
-        self.log('episode/Policy/Loss', policy_loss)
-        self.log('episode/Policy/Entropy', entr)
-        self.log_dict({"value_loss": value_loss, "policy_loss": policy_loss}, prog_bar=True)
+        self.log_dict({"value_loss": value_loss, "policy_loss": policy_loss, "entropy":entr}, prog_bar=True)
         
     # def backward(self, loss):
     #     loss.backward(retain_graph=True)
@@ -1032,7 +1019,6 @@ class PPO_MultiAgent(LightningModule):
         self.tb_logger = SummaryWriter(log_dir="outputs/logs")
         quietRun('chmod -R 777 outputs/logs')
         # tb_logger = CSVLogger(save_dir="outputs/logs")
-        print('hereeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee1')
         trainer = Trainer(
             accelerator='auto',      
             devices=num_devices,
@@ -1044,6 +1030,5 @@ class PPO_MultiAgent(LightningModule):
             # callbacks=[EarlyStopping(monitor='outputs/Q-Loss', mode='min', patience=1000)]
         )
         
-        print('hereeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee2')
         self.play_episodes()
         trainer.fit(self) 
