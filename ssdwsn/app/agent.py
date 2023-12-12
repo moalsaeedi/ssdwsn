@@ -369,7 +369,7 @@ class PPO_ATCP(LightningModule):
         
         self.log_dict({"value_loss": value_loss, "policy_loss": policy_loss, "return":reward_b.sum()}, prog_bar=True)
                 
-    def on_train_epoch_end(self, training_step_outputs):
+    def on_train_epoch_end(self):
         # if self.best_return > 0:
         #     self.policy.load_state_dict(T.load('outputs/logs/best_policy'))
         #     self.value_net.load_state_dict(T.load('outputs/logs/best_value'))
@@ -755,7 +755,7 @@ class PPO_NSFP(LightningModule):
 
         self.log_dict({"value_loss": value_loss, "policy_loss": policy_loss, "return": reward_b.sum()}, prog_bar=True)
                 
-    def on_train_epoch_end(self, training_step_outputs):
+    def on_train_epoch_end(self):
         # if self.best_return > 0:
         #     self.policy.load_state_dict(T.load('outputs/logs/best_policy'))
         #     self.value_net.load_state_dict(T.load('outputs/logs/best_value'))
@@ -981,7 +981,7 @@ class PPO_MultiAgent(LightningModule):
     # def backward(self, loss):
     #     loss.backward(retain_graph=True)
 
-    def on_train_epoch_end(self, training_step_outputs):
+    def on_train_epoch_end(self):
         for idx, value_net in self.values.items():
             self.targetvalues[idx].load_state_dict(value_net.state_dict())
 
