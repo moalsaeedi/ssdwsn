@@ -47,7 +47,7 @@ ch.setFormatter(CustomFormatter())
 logger.addHandler(ch)
 #-----------------------------------
 
-seed_everything(33)
+seed_everything(33, workers=True)
 T.cuda.empty_cache()
 num_devices = T.cuda.device_count() if T.cuda.is_available() else cpu_count()
 device = f'cuda:{num_devices-1}' if T.cuda.is_available() else 'cpu'
@@ -402,8 +402,8 @@ class PPO_ATCP(LightningModule):
         # checkpoint_callback = ModelCheckpoint(dirpath='outputs/logs')
 
         trainer = Trainer(
+            accelerator='auto',      
             devices=num_devices,
-            accelerator=device, 
             max_epochs=-1, #infinite training
             log_every_n_steps=1,
             # callbacks=[checkpoint_callback],
@@ -787,7 +787,9 @@ class PPO_NSFP(LightningModule):
         # checkpoint_callback = ModelCheckpoint(dirpath='outputs/logs')
 
         print('hereeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee1')
-        trainer = Trainer(            
+        trainer = Trainer(
+            accelerator='auto',      
+            devices=num_devices,
             max_epochs=-1, #infinite training
             log_every_n_steps=1,
             # callbacks=[checkpoint_callback],
@@ -800,7 +802,10 @@ class PPO_NSFP(LightningModule):
         print('hereeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee3')
         self.play_episodes()
         print('hereeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee6')
-        trainer.fit(self)
+        try:
+            trainer.fit(self)
+        except Exception as ex:
+            print(ex)
 
 class PPO_MultiAgent(LightningModule):
     """ 
@@ -1013,8 +1018,8 @@ class PPO_MultiAgent(LightningModule):
         # tb_logger = CSVLogger(save_dir="outputs/logs")
         print('hereeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee1')
         trainer = Trainer(
+            accelerator='auto',      
             devices=num_devices,
-            accelerator=device, 
             max_epochs=-1, #infinite training
             log_every_n_steps=1,
             callbacks=[TQDMProgressBar(refresh_rate=2)],
