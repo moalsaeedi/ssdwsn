@@ -51,6 +51,8 @@ seed_everything(33, workers=True)
 T.cuda.empty_cache()
 num_devices = T.cuda.device_count() if T.cuda.is_available() else cpu_count()
 device = f'cuda:{num_devices-1}' if T.cuda.is_available() else 'cpu'
+if T.cuda.is_available():
+    T.set_float32_matmul_precision('high')
 
 class PPO_ATCP(LightningModule):
     """ Adaptive Traffic Controll On-Policy PPO_DRL Agent
@@ -60,6 +62,7 @@ class PPO_ATCP(LightningModule):
                 loss_fn=F.mse_loss, optim=Adam):
         super().__init__()
         self.loop = asyncio.get_running_loop()
+        self.automatic_optimization = False
         self.ctrl = ctrl
         self.networkGraph = self.ctrl.networkGraph
 
@@ -313,8 +316,8 @@ class PPO_ATCP(LightningModule):
         )
         return dataloader
 
-    def training_step(self, batch, batch_idx, optimizer_idx):
-
+    def training_step(self, batch, batch_idx):
+        value_opt, policy_opt = self.optimizers()
         obs_b, log_prob_b, action_b, reward_b, done_b, nxt_obs_b = batch        
 
         state_values = self.value_net(obs_b)
@@ -328,40 +331,46 @@ class PPO_ATCP(LightningModule):
         advantages = (target - state_values).detach()
         advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
 
-        if optimizer_idx == 0:
-            loss = self.hparams.loss_fn(target.float(), state_values.float())
-            self.tb_logger.add_scalars('Training/Value/Loss', {
-                'loss': loss
-                }, global_step=self.global_step
-            )    
-            self.log('value_loss', loss)
-            return loss
+        # value_opt
+        value_loss = self.hparams.loss_fn(target.float(), state_values.float())
+        value_opt.zero_grad()
+        self.manual_backward(value_loss)
+        value_opt.step()
+        self.tb_logger.add_scalars('Training/Value/Loss', {
+            'loss': value_loss
+            }, global_step=self.global_step
+        )    
+        self.log('value_loss', value_loss)
 
-        elif optimizer_idx == 1:
-            log_prob, _ = self.policy(obs_b)
-            prv_log_prob = log_prob_b
-            
-            rho = T.exp(log_prob - prv_log_prob)
-            # rho = log_prob / prv_log_prob
+        # policy_opt
+        log_prob, _ = self.policy(obs_b)
+        prv_log_prob = log_prob_b
+        
+        rho = T.exp(log_prob - prv_log_prob)
+        # rho = log_prob / prv_log_prob
 
-            surrogate_1 = rho * advantages
-            surrogate_2 = T.clip(rho, 1 - self.hparams.epsilon, 1 + self.hparams.epsilon) * advantages
+        surrogate_1 = rho * advantages
+        surrogate_2 = T.clip(rho, 1 - self.hparams.epsilon, 1 + self.hparams.epsilon) * advantages
 
-            loss = - T.minimum(surrogate_1, surrogate_2).mean()
-            # self.ep_policy_loss.append(loss.item())
-            # entropy = -T.sum(action_b*log_prob_b, dim=-1, keepdim=True)
-            # loss = (policy_loss - self.hparams.entropy_coef * entropy).mean()
-            self.tb_logger.add_scalars('Training/Policy/Loss', {
-                'loss': loss
-                }, global_step=self.global_step
-            )
-            # self.tb_logger.add_scalars('Training/Policy/Entropy', {
-            #     'entropy': entropy.mean()
-            #     }, global_step=self.global_step
-            # )
-            self.log('policy_loss', loss)
-            self.log('return', reward_b.sum())
-            return loss
+        policy_loss = - T.minimum(surrogate_1, surrogate_2).mean()
+        policy_opt.zero_grad()
+        self.manual_backward(policy_loss)
+        policy_opt.step()
+        # self.ep_policy_loss.append(loss.item())
+        # entropy = -T.sum(action_b*log_prob_b, dim=-1, keepdim=True)
+        # loss = (policy_loss - self.hparams.entropy_coef * entropy).mean()
+        self.tb_logger.add_scalars('Training/Policy/Loss', {
+            'loss': policy_loss
+            }, global_step=self.global_step
+        )
+        # self.tb_logger.add_scalars('Training/Policy/Entropy', {
+        #     'entropy': entropy.mean()
+        #     }, global_step=self.global_step
+        # )
+        self.log('policy_loss', policy_loss)
+        self.log('return', reward_b.sum())
+        
+        self.log_dict({"value_loss": value_loss, "policy_loss": policy_loss}, prog_bar=True)
                 
     def on_train_epoch_end(self, training_step_outputs):
         # if self.best_return > 0:
@@ -423,6 +432,7 @@ class PPO_NSFP(LightningModule):
                 loss_fn=F.mse_loss, optim=AdamW):
         super().__init__()
         self.loop = asyncio.get_running_loop()
+        self.automatic_optimization = False
         self.ctrl = ctrl
         self.networkGraph = self.ctrl.networkGraph
         self.obs_cols = ['port', 'intftypeval', 'datatypeval', 'distance', 'denisty', 'alinks', 'flinks', 'x', 'y', 'z', 'batt', 'delay', 'throughput', \
@@ -558,7 +568,6 @@ class PPO_NSFP(LightningModule):
     
     @T.no_grad()
     def play_episodes(self, policy=None):
-        print('hereeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee4')
         obs, nodes, _, _ = self.reset()
         print('COLLECTING DATA ....')     
         for step in range(self.hparams.samples_per_epoch):
@@ -580,8 +589,7 @@ class PPO_NSFP(LightningModule):
             #     pd.DataFrame(done, columns=['done']),
             #     pd.DataFrame(info, columns=['info'])],
             #     axis=1).to_csv('outputs/logs/experiences.csv', mode='a', sep='\t', index=False, header=not path.exists('outputs/logs/experiences.csv'))
-            self.pltMetrics(reward, nodes, obs, nxt_obs, nxt_sink_obs) 
-            print('hereeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee5')   
+            self.pltMetrics(reward, nodes, obs, nxt_obs, nxt_sink_obs)  
             obs = nxt_obs            
             self.ep_step += 1
 
@@ -695,9 +703,8 @@ class PPO_NSFP(LightningModule):
         )
         return dataloader
 
-    def training_step(self, batch, batch_idx, optimizer_idx):
-
-        print('hereeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee7')
+    def training_step(self, batch, batch_idx):
+        value_opt, policy_opt = self.optimizers()
         obs_b, log_prob_b, action_b, reward_b, done_b, nxt_obs_b = batch        
 
         # rev_nxt_obs = self.env.scaler.inverse_transform(T.clone(nxt_obs_b.data).detach().cpu().numpy())
@@ -713,40 +720,46 @@ class PPO_NSFP(LightningModule):
         advantages = (target - state_values).detach()
         advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
 
-        if optimizer_idx == 0:
-            loss = self.hparams.loss_fn(target.float(), state_values.float())
-            self.tb_logger.add_scalars('Training/Value/Loss', {
-                'loss': loss
-                }, global_step=self.global_step
-            )    
-            self.log('value_loss', loss)
-            return loss
+        # value_opt
+        value_loss = self.hparams.loss_fn(target.float(), state_values.float())
+        value_opt.zero_grad()
+        self.manual_backward(value_loss)
+        value_opt.step()
+        self.tb_logger.add_scalars('Training/Value/Loss', {
+            'loss': value_loss
+            }, global_step=self.global_step
+        )    
+        self.log('value_loss', value_loss)
 
-        elif optimizer_idx == 1:
-            log_prob, _ = self.policy(obs_b)
-            prv_log_prob = log_prob_b
-            
-            rho = T.exp(log_prob - prv_log_prob)
-            # rho = log_prob / prv_log_prob
+        # policy_opt
+        log_prob, _ = self.policy(obs_b)
+        prv_log_prob = log_prob_b
+        
+        rho = T.exp(log_prob - prv_log_prob)
+        # rho = log_prob / prv_log_prob
 
-            surrogate_1 = rho * advantages
-            surrogate_2 = T.clip(rho, 1 - self.hparams.epsilon, 1 + self.hparams.epsilon) * advantages
+        surrogate_1 = rho * advantages
+        surrogate_2 = T.clip(rho, 1 - self.hparams.epsilon, 1 + self.hparams.epsilon) * advantages
 
-            loss = - T.minimum(surrogate_1, surrogate_2).mean()
-            # self.ep_policy_loss.append(loss.item())
-            # entropy = -T.sum(action_b*log_prob_b, dim=-1, keepdim=True)
-            # loss = (policy_loss - self.hparams.entropy_coef * entropy).mean()
-            self.tb_logger.add_scalars('Training/Policy/Loss', {
-                'loss': loss
-                }, global_step=self.global_step
-            )
-            # self.tb_logger.add_scalars('Training/Policy/Entropy', {
-            #     'entropy': entropy.mean()
-            #     }, global_step=self.global_step
-            # )
-            self.log('policy_loss', loss)
-            self.log('return', reward_b.sum())
-            return loss
+        policy_loss = - T.minimum(surrogate_1, surrogate_2).mean()
+        policy_opt.zero_grad()
+        self.manual_backward(policy_loss)
+        policy_opt.step()
+        # self.ep_policy_loss.append(loss.item())
+        # entropy = -T.sum(action_b*log_prob_b, dim=-1, keepdim=True)
+        # loss = (policy_loss - self.hparams.entropy_coef * entropy).mean()
+        self.tb_logger.add_scalars('Training/Policy/Loss', {
+            'loss': policy_loss
+            }, global_step=self.global_step
+        )
+        # self.tb_logger.add_scalars('Training/Policy/Entropy', {
+        #     'entropy': entropy.mean()
+        #     }, global_step=self.global_step
+        # )
+        self.log('policy_loss', policy_loss)
+        self.log('return', reward_b.sum())
+
+        self.log_dict({"value_loss": value_loss, "policy_loss": policy_loss}, prog_bar=True)
                 
     def on_train_epoch_end(self, training_step_outputs):
         # if self.best_return > 0:
@@ -815,6 +828,7 @@ class PPO_MultiAgent(LightningModule):
                  loss_fn=F.mse_loss, optim=AdamW):
         super().__init__()
         self.loop = asyncio.get_running_loop()
+        self.automatic_optimization = False
         self.current_episode = 0
         self.env = env
         self.id = id
@@ -842,7 +856,6 @@ class PPO_MultiAgent(LightningModule):
     def play_episodes(self, policy=None):
         # self.buffer = []
         # self.env.num_samples = 0
-        print('hereeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee3')
         self.ep_value_loss = []
         self.ep_policy_loss = []
         self.ep_entropy = []
@@ -906,7 +919,8 @@ class PPO_MultiAgent(LightningModule):
         )
         return dataloader
 
-    def training_step(self, batch, batch_idx, optimizer_idx):
+    def training_step(self, batch, batch_idx):
+        value_opt, policy_opt = self.optimizers()
         nodes_b, obs_b, loc_b, scale_b, action_b, reward_b, done_b, nxt_obs_b = batch
         with T.no_grad():
             _nodes_b = nodes_b.detach().cpu().numpy()
@@ -927,8 +941,8 @@ class PPO_MultiAgent(LightningModule):
             self.log('episode/Performance/Resedual_Energy_var', rev_nxt_obs_b[:,18].mean())
         
         self.current_episode += 1
-        val_loss = 0
-        pol_loss = 0
+        value_loss = 0
+        policy_loss = 0
         entr = 0
         for nd in nds:
             idxs = np.where((_nodes[:,0] == nd))
@@ -939,41 +953,43 @@ class PPO_MultiAgent(LightningModule):
                 nxt_state_values[done_b] = 0.0
                 target = reward_b + self.hparams.gamma * nxt_state_values
 
-            if optimizer_idx == 0:
-                loss = self.hparams.loss_fn(state_values.float(), target.float())
-                val_loss += loss
-                # self.ep_value_loss.append(loss.unsqueeze(0))
+            # value_opt
+            val_loss = self.hparams.loss_fn(state_values.float(), target.float())
+            value_opt.zero_grad()
+            self.manual_backward(val_loss)
+            value_opt.step()
+            val_loss += val_loss
+            # self.ep_value_loss.append(loss.unsqueeze(0))
 
-            elif optimizer_idx == 1:
-                advantages = (target - state_values).detach()
-                prv_dist = Normal(loc_b[idxs[0]], scale_b[idxs[0]])
-                prv_log_prob = prv_dist.log_prob(action_b[idxs[0]]).sum(dim=-1, keepdim=True)
-                new_loc, new_scale = self.policies[nd](obs_b[idxs[0]])
-                dist = Normal(new_loc, new_scale)
-                log_prob = dist.log_prob(action_b[idxs[0]]).sum(dim=-1, keepdim=True)
+            # policy_opt
+            advantages = (target - state_values).detach()
+            prv_dist = Normal(loc_b[idxs[0]], scale_b[idxs[0]])
+            prv_log_prob = prv_dist.log_prob(action_b[idxs[0]]).sum(dim=-1, keepdim=True)
+            new_loc, new_scale = self.policies[nd](obs_b[idxs[0]])
+            dist = Normal(new_loc, new_scale)
+            log_prob = dist.log_prob(action_b[idxs[0]]).sum(dim=-1, keepdim=True)
 
-                rho = T.exp(log_prob - prv_log_prob)
+            rho = T.exp(log_prob - prv_log_prob)
 
-                surrogate_1 = rho * advantages[idxs[0]]
-                surrogate_2 = rho.clip(1 - self.hparams.epsilon, 1 + self.hparams.epsilon) * advantages[idxs[0]]
+            surrogate_1 = rho * advantages[idxs[0]]
+            surrogate_2 = rho.clip(1 - self.hparams.epsilon, 1 + self.hparams.epsilon) * advantages[idxs[0]]
 
-                policy_loss = - T.minimum(surrogate_1, surrogate_2)
-                entropy = dist.entropy().sum(dim=-1, keepdim=True)
-                loss = (policy_loss - self.hparams.entropy_coef * entropy).mean()
-                # loss = Variable(loss, requires_grad = True)
-                pol_loss += loss
-                entr += entropy.mean()
-                # self.ep_policy_loss.append(loss.unsqueeze(0))
-                # self.ep_entropy.append(entropy.mean().unsqueeze(0))
+            policy_loss = - T.minimum(surrogate_1, surrogate_2)
+            entropy = dist.entropy().sum(dim=-1, keepdim=True)
+            pol_loss = (policy_loss - self.hparams.entropy_coef * entropy).mean()
+            policy_opt.zero_grad()
+            self.manual_backward(pol_loss)
+            policy_opt.step()
+            # loss = Variable(loss, requires_grad = True)
+            policy_loss += pol_loss
+            entr += entropy.mean()
+            # self.ep_policy_loss.append(loss.unsqueeze(0))
+            # self.ep_entropy.append(entropy.mean().unsqueeze(0))
             
-        if optimizer_idx == 0:
-            self.log('episode/ValueNet/Loss', val_loss)    
-            return val_loss
-        
-        if optimizer_idx == 1:
-            self.log('episode/Policy/Loss', pol_loss)
-            self.log('episode/Policy/Entropy', entr)
-            return pol_loss
+        self.log('episode/ValueNet/Loss', value_loss)            
+        self.log('episode/Policy/Loss', policy_loss)
+        self.log('episode/Policy/Entropy', entr)
+        self.log_dict({"value_loss": value_loss, "policy_loss": policy_loss}, prog_bar=True)
         
     # def backward(self, loss):
     #     loss.backward(retain_graph=True)
