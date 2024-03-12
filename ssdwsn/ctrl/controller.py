@@ -890,4 +890,103 @@ class NSFP_ctrl(Controller):
             agent = PPO_NSFP(ctrl=self, batch_size=250, samples_per_epoch=1, obs_time=15)
             await agent.run()
         asyncio.run(async_thread())
+
+class MP_ATCNSF_ctrl(Controller):
+    """ Network State Forcastin PPO_DRL based Controller
+    """
+    def __init__(self, inetAddress: tuple = None, networkGraph: Graph = None):
+        super().__init__(inetAddress, networkGraph)
+        self.name = 'MP-ATCNSF-ctrl'
+        self.routingApp = Dijkstra        
+        # self.start()
         
+    async def setupNetwork(self):
+        pass
+    
+    async def manageRoutingRequest(self, req:RequestPacket, data:DataPacket):
+        #TODO if path size exceed the open path payload limit
+        await self.srRulesSetup(req, data)
+    
+    def ctrlLearningWorker(self):
+        async def async_thread():
+            # run the RL model after 300 seconds of initiating the network simulation (discovery phase)
+            await asyncio.sleep(300)
+            from ssdwsn.app.agent import PPO_MP_ATCNSF
+            agent = PPO_MP_ATCNSF(ctrl=self, batch_size=250, samples_per_epoch=1, obs_time=15)
+            await agent.run()
+        asyncio.run(async_thread())
+
+class RPLS_ctrl(Controller):
+    """ Network State Q-Learning based Controller
+    """
+    def __init__(self, inetAddress: tuple = None, networkGraph: Graph = None):
+        super().__init__(inetAddress, networkGraph)
+        self.name = 'RPLS-ctrl'
+        self.routingApp = Dijkstra
+        # self.start()
+        
+    async def setupNetwork(self):
+        pass
+    
+    async def manageRoutingRequest(self, req:RequestPacket, data:DataPacket):
+        #TODO if path size exceed the open path payload limit
+        await self.srRulesSetup(req, data)
+    
+    def ctrlLearningWorker(self):
+        async def async_thread():
+            # run the RL model after 300 seconds of initiating the network simulation (discovery phase)
+            await asyncio.sleep(300)
+            from ssdwsn.app.agent import RPLS
+            agent = RPLS(ctrl=self, batch_size=250, samples_per_epoch=1)
+            await agent.run()
+        asyncio.run(async_thread())
+        
+class DRLIR_ctrl(Controller):
+    """ Network State Q-Learning based Controller
+    """
+    def __init__(self, inetAddress: tuple = None, networkGraph: Graph = None):
+        super().__init__(inetAddress, networkGraph)
+        self.name = 'DRLIR-ctrl'
+        self.routingApp = Dijkstra
+        # self.start()
+        
+    async def setupNetwork(self):
+        pass
+    
+    async def manageRoutingRequest(self, req:RequestPacket, data:DataPacket):
+        #TODO if path size exceed the open path payload limit
+        await self.srRulesSetup(req, data)
+    
+    def ctrlLearningWorker(self):
+        async def async_thread():
+            # run the RL model after 300 seconds of initiating the network simulation (discovery phase)
+            await asyncio.sleep(300)
+            from ssdwsn.app.agent import DRLIR
+            agent = DRLIR(ctrl=self, batch_size=250, samples_per_epoch=1)
+            await agent.run()
+        asyncio.run(async_thread())
+         
+class RLSDWSN_ctrl(Controller):
+    """ Network State Q-Learning based Controller
+    """
+    def __init__(self, inetAddress: tuple = None, networkGraph: Graph = None):
+        super().__init__(inetAddress, networkGraph)
+        self.name = 'RLSDWSN-ctrl'
+        self.routingApp = Dijkstra
+        # self.start()
+        
+    async def setupNetwork(self):
+        pass
+    
+    async def manageRoutingRequest(self, req:RequestPacket, data:DataPacket):
+        #TODO if path size exceed the open path payload limit
+        await self.srRulesSetup(req, data)
+    
+    def ctrlLearningWorker(self):
+        async def async_thread():
+            # run the RL model after 300 seconds of initiating the network simulation (discovery phase)
+            await asyncio.sleep(300)
+            from ssdwsn.app.agent import RLSDWSN
+            agent = RLSDWSN(ctrl=self, batch_size=250, samples_per_epoch=1)
+            await agent.run()
+        asyncio.run(async_thread())

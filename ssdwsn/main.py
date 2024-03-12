@@ -33,7 +33,7 @@ from ssdwsn.data.node import Mote, Sink
 from ssdwsn.data.addr import Addr
 # from ssdwsn.util.log import info, error, debug, output, warn
 from ssdwsn.ctrl.graph import Graph
-from ssdwsn.ctrl.controller import ATCP_ctrl, NSFP_ctrl
+from ssdwsn.ctrl.controller import ATCP_ctrl, NSFP_ctrl, RPLS_ctrl, DRLIR_ctrl, RLSDWSN_ctrl, MP_ATCNSF_ctrl
 from ssdwsn.util.constants import Constants as ct
 from ssdwsn.util.utils import CustomFormatter, customClass, mapRSSI, runCmd
 from ssdwsn.data.neighbor import Neighbor
@@ -117,7 +117,11 @@ SINKS = {'sink':Sink,
 
 CONTROLLERS = {
     'NSFP-ctrl': NSFP_ctrl,
-    'ATCP-ctrl': ATCP_ctrl
+    'ATCP-ctrl': ATCP_ctrl,
+    'MP-ATCNSF-ctrl': MP_ATCNSF_ctrl,
+    'RPLS-ctrl': RPLS_ctrl,
+    'DRLIR-ctrl': DRLIR_ctrl,
+    'RLSDWSN-ctrl': RLSDWSN_ctrl
 }
 SENSORS = {
     'temperature': Temperature, 
@@ -398,13 +402,13 @@ async def begin(data):
     loop = asyncio.get_running_loop()
     
     for ctrl in ctrls:   
-        TASKS.append(loop.run_in_executor(expool, run_loop_in_process, 'ctrl',ctrl, settings, topofilename, networkGraph))
+        TASKS.append(loop.run_in_executor(expool, run_loop_in_process, 'ctrl', ctrl["ctrltype"], ctrl, settings, topofilename, networkGraph))
 
     for node in nodes: 
         if node['issink']:            
-            TASKS.append(loop.run_in_executor(expool, run_loop_in_process, 'sink', node, settings, topofilename))
+            TASKS.append(loop.run_in_executor(expool, run_loop_in_process, 'sink', ctrls[0]["ctrltype"], node, settings, topofilename))
         else:
-            TASKS.append(loop.run_in_executor(expool, run_loop_in_process, 'mote', node, settings, topofilename))
+            TASKS.append(loop.run_in_executor(expool, run_loop_in_process, 'mote', ctrls[0]["ctrltype"], node, settings, topofilename))
 
     try:    
         await asyncio.gather(*TASKS)
@@ -412,13 +416,13 @@ async def begin(data):
         for process in expool._processes.values():
             process.kill()
 
-def run_loop_in_process(nodetype, node, settings, topofilename, networkGraph=None):    
+def run_loop_in_process(nodetype, ctrltype, node, settings, topofilename, networkGraph=None):    
     async def subprocess_async_work():
         global NEXT_MAC_COUNT
         global NEXT_DPID_COUNT
         # panid=0xbeef
         if nodetype == 'ctrl':
-            controller = customClass(CONTROLLERS, node["ctrltype"])(inetAddress=(node["ip"], ct.BASE_CTRL_PORT+node["port"]), networkGraph=networkGraph)  
+            controller = customClass(CONTROLLERS, ctrltype)(inetAddress=(node["ip"], ct.BASE_CTRL_PORT+node["port"]), networkGraph=networkGraph)  
             controller.ppm = customClass(PPMS, settings['ppm'])()
             RUNNING_PS.append(getpid())
             # jsondata = json_graph.node_link_data(networkGraph.getGraph())
@@ -436,11 +440,11 @@ def run_loop_in_process(nodetype, node, settings, topofilename, networkGraph=Non
                 #TODO update Addr class to include the subnet id (net) and remove the split from target this will required to update packets structure
                 target = node['target'][2:]
                 mote = Mote(net=node['net'], addr=Addr(node['addr']), portSeq=node['port'], batt=node['batt'], pos=node_pos, target=target, \
-                    topo=topofilename, ctrl=(node["ctrl"].split(':')[0], ct.BASE_CTRL_PORT+int(node["ctrl"].split(':')[1])), cls=SENSORS[node['datatype']] )
+                    topo=topofilename, ctrl=(node["ctrl"].split(':')[0], ct.BASE_CTRL_PORT+int(node["ctrl"].split(':')[1]), ctrltype), cls=SENSORS[node['datatype']] )
                 mote.wintf = customClass(INTFS, node['intftype'])(mote.id, mote.ip, port=ct.BASE_NODE_PORT+node['port'], mac=new_mac)
                 logger.info(mote.wintf)
                 # system("wpan-hwsim add >/dev/null 2>&1")
-                mote.ppm = customClass(PPMS, settings['ppm'])() 
+                mote.ppm = customClass(PPMS, settings['ppm'])()
                 RUNNING_PS.append(getpid())
                 # jsondata = json_graph.node_link_data(networkGraph.getGraph())
                 # print(jsondata)
@@ -449,7 +453,7 @@ def run_loop_in_process(nodetype, node, settings, topofilename, networkGraph=Non
             if nodetype == 'sink':
                 new_sink_dpid = "{:08b}".format(ct.BASE_DPID + NEXT_DPID_COUNT) 
                 sink = Sink(net=node['net'], addr=Addr(node['addr']), portSeq=node['port'], dpid=new_sink_dpid, pos=node_pos, \
-                    topo=topofilename, ctrl=(node["ctrl"].split(':')[0], ct.BASE_CTRL_PORT+int(node["ctrl"].split(':')[1])))
+                    topo=topofilename, ctrl=(node["ctrl"].split(':')[0], ct.BASE_CTRL_PORT+int(node["ctrl"].split(':')[1]), ctrltype))
                 sink.wintf = customClass(INTFS, node['intftype'])(sink.id, sink.ip, port=ct.BASE_NODE_PORT+node['port'], mac=new_mac)
                 logger.info(sink.wintf)
                 sink.ppm = customClass(PPMS, settings['ppm'])()   

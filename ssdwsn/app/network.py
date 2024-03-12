@@ -487,6 +487,30 @@ class TD3_GredientPolicy(nn.Module):
         action = action.detach().cpu().numpy()
         return action
 
+class DQN(nn.Module):
+    """Reinforcement Deep-Q Learning Network (to predict the reward of (observation+action))
+    Args:
+        nn (_type_): Neural Network
+    """
+    def __init__(self, obs_dim, hidden_size, action_dim):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(obs_dim, hidden_size),
+            nn.ReLU(),
+            nn.Linear(hidden_size, hidden_size),
+            nn.ReLU()
+        ).to(device)
+        self.value_head = nn.Linear(hidden_size, 1).to(device)  # Output for state-value function
+        self.mu_head = nn.Linear(hidden_size, action_dim).to(device)  # Output for mean of the policy
+    def forward(self, x):
+        if isinstance(x, np.ndarray):
+            x = T.from_numpy(x).to(device)
+        x = self.net(x.float())
+        value = self.value_head(x)
+        action = self.mu_head(x)
+        # action = F.sigmoid(self.mu_head(x))
+        return value, action
+    
 class PPO_GradientPolicy(nn.Module):
     """Gradient Policy Network (to predict an action following a normal distribution (infinit possible of actions) of an observation)
     Args:

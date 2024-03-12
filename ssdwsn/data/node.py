@@ -243,9 +243,7 @@ class Node:
             packet (_type_): different typs of packets (DATA, OPEN_PATH, REQUEST, RESPONSE, REPORT, BEACON)
         """
         packet.decrementTtl()
-        stts = time.time()
         asyncio.get_running_loop().run_in_executor(None, self.txHandler, packet)
-        logger.info(f'txHandler taks: {time.time() - stts}')
         
     def txHandler(self, packet):
         """transmit the packet over the medium
@@ -404,7 +402,6 @@ class Node:
                 self.remvExpiredEnties(round(time.time(), 4) - ts)
                 ts = round(time.time(), 4)
                 await self.updateStats('batt')
-                logger.info(f'checkBatteryWorker takes: {time.time() - ts1}')
         asyncio.run(async_thread())
 
     def socketWorker(self):
@@ -422,9 +419,7 @@ class Node:
                 self.battery.receivedRadio(ts2-ts1)
                 if len(data) >= ct.DFLT_HDR_LEN and len(data) <= ct.MTU:
                     packet = Packet(data)
-                    stts = time.time()
                     await self.rxPacket(Packet(data), round(time.time(), 4))
-                    logger.info(f'rxPacket takes: {time.time() - stts}')
 
         asyncio.run(async_thread()) 
 
@@ -433,7 +428,6 @@ class Node:
         """        
         async def async_thread():
             while self.ready:
-                stts = time.time()
                 await asyncio.sleep(self.betti['value']/ct.MILLIS_IN_SECOND)
                 if self.isActive and self.sinkDistance < ct.DIST_MAX + 1:
                     for key, val in self.neighborTable.items():
@@ -441,7 +435,6 @@ class Node:
                             await self.sendBeacon(acked=False, dst=Addr(re.sub(r'^.*?.', '', key)[1:]))
                     await self.updateLinkColor()
                 await asyncio.sleep((ct.MAX_BE_TTI - self.betti['value'])/ct.MILLIS_IN_SECOND)
-                logger.info(f'beaconWorker takes: {time.time() - stts}')
         asyncio.run(async_thread())
     
     def reportWorker(self):
@@ -450,7 +443,6 @@ class Node:
         async def async_thread(): 
             await asyncio.sleep(30)
             while self.ready:
-                stts = time.time()
                 await asyncio.sleep(self.rptti['value']/ct.MILLIS_IN_SECOND)
                 if self.isActive and self.sinkDistance < ct.DIST_MAX+1:
                     packet = await self.createReportPacket()
@@ -459,7 +451,6 @@ class Node:
                     else:
                         await self.runFlowMatch(packet)
                 await asyncio.sleep((ct.MAX_RP_TTI - self.rptti['value'])/ct.MILLIS_IN_SECOND)
-                logger.info(f'reportWorker takes: {time.time() - stts}')
         asyncio.run(async_thread())    
 
     def statusWorker(self):
@@ -471,7 +462,6 @@ class Node:
             self.stvipub = self.zmqContext_visec.socket(zmq.PUB)
             self.stvipub.connect(self.ctrlURL_visec)
             while self.ready:
-                stts = time.time()
                 if self.isActive:
                     data = {"id":self.id,
                             "lastupdate":round(time.time(), 4),
@@ -526,7 +516,6 @@ class Node:
                     self.betti['value_ts'] = 0
                     await asyncio.sleep(2)
                 else: await asyncio.sleep(1)
-                logger.info(f'statusWorker takes: {time.time() - stts}')
         asyncio.run(async_thread())
 
     async def runCmd(self, cmd):
@@ -907,7 +896,8 @@ class Node:
             idx = 0
             if val[idx] == ct.DRL_AG_INDEX:   
                 # '''
-                self.isAggr = bool(int.from_bytes(val[idx+1:idx+1+ct.DRL_AG_LEN], byteorder='big', signed=False))
+                if self.ctrl[2] == 'ATCP-ctrl':
+                    self.isAggr = bool(int.from_bytes(val[idx+1:idx+1+ct.DRL_AG_LEN], byteorder='big', signed=False))
                 idx += ct.DRL_AG_LEN+1
                 # '''
             if val[idx] == ct.DRL_NH_INDEX:
@@ -918,9 +908,9 @@ class Node:
                     entry.addWindow(Window().setOperator(ct.EQUAL).setSize(ct.W_SIZE_1)
                         .setLhsOperandType(ct.PACKET).setLhs(ct.SRC_INDEX).setRhsOperandType(ct.CONST)
                         .setRhs(self.myAddress.intValue()))
-                    entry.addWindow(Window().setOperator(ct.EQUAL).setSize(ct.W_SIZE_1)
-                        .setLhsOperandType(ct.PACKET).setLhs(ct.DST_INDEX).setRhsOperandType(ct.CONST)
-                        .setRhs(self.sinkAddress.intValue()))
+                    # entry.addWindow(Window().setOperator(ct.EQUAL).setSize(ct.W_SIZE_1)
+                    #     .setLhsOperandType(ct.PACKET).setLhs(ct.DST_INDEX).setRhsOperandType(ct.CONST)
+                    #     .setRhs(self.sinkAddress.intValue()))
                     # entry.addWindow(Window.fromString("P.TYP == 2"))
                     entry.addAction(ForwardUnicastAction(nxtHop=act_nxh_node))
                     entry.getStats().setTtl(int(time.time()))
@@ -931,7 +921,7 @@ class Node:
                     if len(entry.windows):
                         await self.insertRule(entry)
                 else:
-                    for key in self.flowTable.get_matching('dst:'+str(self.sinkAddress.intValue())):
+                    for key in self.flowTable.get_matching('src:'+str(self.myAddress.intValue())):
                         logger.info(f"{self.id} REMOVE rule ({self.flowTable[key]}) at key {key}")
                         if key != '.*':
                             del self.flowTable[key]
@@ -939,10 +929,11 @@ class Node:
                 idx += ct.DRL_NH_LEN+1
             if val[idx] == ct.DRL_RT_INDEX:
                 # '''
-                self.rptti['value'] = abs((round(time.time(), 4) - ts)*ct.MILLIS_IN_SECOND + int.from_bytes(val[idx+1:idx+1+ct.DRL_RT_LEN], byteorder='big', signed=False))
-                if self.rptti['value'] > ct.MAX_RP_TTI:
-                    self.rptti['value'] -= ct.MAX_RP_TTI
-                await self.updateStats('rptti')
+                if self.ctrl[2] == 'ATCP-ctrl':
+                    self.rptti['value'] = abs((round(time.time(), 4) - ts)*ct.MILLIS_IN_SECOND + int.from_bytes(val[idx+1:idx+1+ct.DRL_RT_LEN], byteorder='big', signed=False))
+                    if self.rptti['value'] > ct.MAX_RP_TTI:
+                        self.rptti['value'] -= ct.MAX_RP_TTI
+                    await self.updateStats('rptti')
                 # '''
                 idx += ct.DRL_RT_LEN+1
 
@@ -1586,7 +1577,6 @@ class Mote(Node):
             asyncio.get_running_loop().run_in_executor(None, self.sensorType.run)
             seq = 0
             while self.ready:
-                stts = time.time()
                 if self.isActive:
                     recv = await self.sensingQueue.get()
                     if self.isActive:
@@ -1598,7 +1588,6 @@ class Mote(Node):
                         await self.runFlowMatch(packet)
                         seq += 1
                 else: await asyncio.sleep(1)
-                logger.info(f'sensingQueueWorker takes: {time.time() - stts}')
         asyncio.run(async_thread())
 
     async def initssdwsnSpecific(self):
@@ -1637,13 +1626,11 @@ class Sink(Node):
             # self.publisher.setsockopt(zmq.NOBLOCK)
             self.publisher.connect(self.ctrlURL_sec)  
             while self.ready:
-                stts = time.time()
                 if self.isActive:
                     rpp = RegProxyPacket(net=self.myNet, src=self.myAddress, dPid=self.dpid, mac=self.wintf.getMac(), port=self.wintf.port, isa=self.addrController)  
                     await self.controllerTx(rpp)
                     await asyncio.sleep(5)
                 else: await asyncio.sleep(1)
-                logger.info(f'connCtrlWorker takes: {time.time() - stts}')
         asyncio.run(async_thread())
 
     def packetOutWorker(self):
@@ -1658,12 +1645,10 @@ class Sink(Node):
             self.subscriber.connect(self.ctrlURL_pri)
             self.subscriber.subscribe("OUT")
             while self.ready:
-                stts = time.time()
                 if self.isActive:
                     packet = await self.subscriber.recv()
                     await self.rxPacket(Packet(packet[len('OUT'):]).setTS(round(time.time(), 4)), round(time.time(), 4), 'rx-ctrl')
                 else: await asyncio.sleep(1)
-                logger.info(f'packetOutWorker takes: {time.time() - stts}')
         asyncio.run(async_thread())
 
     async def controllerTx(self, packet):
