@@ -29,6 +29,6 @@ Documentation will be pushed soon ...
 
 ![plot](https://github.com/moalsaeedi/ssdwsn/blob/main/outputs/ssdwsn-snapshot.png?raw=true)
 
-# Publications
+# Publication
 M. Alsaeedi, M. M. Mohamad and A. Al-Roubaiey, "SSDWSN: A Scalable Software-Defined Wireless Sensor Networks," in IEEE Access, vol. 12, pp. 21787-21806, 2024, doi: 10.1109/ACCESS.2024.3362353.
 
