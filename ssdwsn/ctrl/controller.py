@@ -45,7 +45,7 @@ from zmq.asyncio import Context, Poller
 import socketio
 from socketio import exceptions
 import json
-from sys import stderr
+from sys import stderr, exc_info
 from sklearn.model_selection import train_test_split
 
 #logging----------------------------

@@ -39,7 +39,7 @@ from ssdwsn.data.addr import Addr
 from ssdwsn.data.neighbor import Neighbor
 from ssdwsn.openflow.packet import Packet
 from ssdwsn.util.constants import Constants as ct
-from ssdwsn.openflow.action import Action, ForwardUnicastAction
+from ssdwsn.openflow.action import Action, ForwardUnicastAction, DropAction
 from ssdwsn.util.utils import mergeBytes, mapRSSI, compare, Suspendable, CustomFormatter, ipAdd6, runCmd, portToAddrStr, zero_division, getColorVal
 from ssdwsn.openflow.window import Window
 from ssdwsn.openflow.entry import Entry
@@ -896,7 +896,7 @@ class Node:
             idx = 0
             if val[idx] == ct.DRL_AG_INDEX:   
                 # '''
-                if self.ctrl[2] == 'ATCP-ctrl':
+                if self.ctrl[2] in ('ATCP-ctrl', 'MP-ATCNSF-ctrl'):
                     self.isAggr = bool(int.from_bytes(val[idx+1:idx+1+ct.DRL_AG_LEN], byteorder='big', signed=False))
                 idx += ct.DRL_AG_LEN+1
                 # '''
@@ -929,13 +929,31 @@ class Node:
                 idx += ct.DRL_NH_LEN+1
             if val[idx] == ct.DRL_RT_INDEX:
                 # '''
-                if self.ctrl[2] == 'ATCP-ctrl':
+                if self.ctrl[2] in ('ATCP-ctrl', 'MP-ATCNSF-ctrl'):
                     self.rptti['value'] = abs((round(time.time(), 4) - ts)*ct.MILLIS_IN_SECOND + int.from_bytes(val[idx+1:idx+1+ct.DRL_RT_LEN], byteorder='big', signed=False))
                     if self.rptti['value'] > ct.MAX_RP_TTI:
                         self.rptti['value'] -= ct.MAX_RP_TTI
                     await self.updateStats('rptti')
                 # '''
                 idx += ct.DRL_RT_LEN+1
+            if val[idx] == ct.DRL_DR_INDEX:
+
+                entry = Entry()
+                entry.addWindow(Window().setOperator(ct.EQUAL).setSize(ct.W_SIZE_1)
+                    .setLhsOperandType(ct.PACKET).setLhs(ct.DST_INDEX).setRhsOperandType(ct.CONST)
+                    .setRhs(self.sinkAddress.intValue()))
+                entry.addWindow(Window().setOperator(ct.EQUAL).setSize(ct.W_SIZE_1)
+                    .setLhsOperandType(ct.PACKET).setLhs(ct.SRC_INDEX).setRhsOperandType(ct.CONST)
+                    .setRhs(self.myAddress.intValue()))
+                entry.addWindow(Window.fromString("P.TYP == "+ str(ct.REPORT)))
+                entry.addAction(DropAction())
+                entry.getStats().setTtl(int(time.time()))
+                entry.getStats().setIdle(int.from_bytes(val[idx+1:idx+1+ct.DRL_DR_LEN], byteorder='big', signed=False))
+
+                if len(entry.windows):
+                    await self.insertRule(entry)
+
+                idx += ct.DRL_DR_LEN+1
 
         elif conf == ConfigProperty.IS_AGGR.getValue():
             self.isAggr = bool(int.from_bytes(val, byteorder='big', signed=False))

@@ -227,6 +227,8 @@ class Constants:
     DRL_RT_LEN = 2
     DRL_DT_INDEX = 4
     DRL_DT_LEN = 2
+    DRL_DR_INDEX = 5
+    DRL_DR_LEN = 1
     # Forward Unicast Action Constants
     
     # Forward Multicast Action Constants

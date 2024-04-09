@@ -12,6 +12,7 @@ import numpy as np
 import pandas as pd
 import asyncio
 import logging
+from concurrent.futures import ProcessPoolExecutor
 from ssdwsn.util.utils import quietRun, CustomFormatter
 from ssdwsn.data.addr import Addr
 from ssdwsn.openflow.action import ForwardUnicastAction, DropAction
@@ -95,6 +96,7 @@ class PPO_ATCP(LightningModule):
         self.ep_return = []
         self.best_return = 0
         self.ep_step = 0
+        self.tb_logger = None
 
         self.save_hyperparameters('batch_size', 'nb_optim_iters', 'policy_lr', 'value_lr', 
             'lr', 'hidden_size', 'gamma', 'loss_fn', 'optim', 'samples_per_epoch', 'entropy_coef',
@@ -180,7 +182,7 @@ class PPO_ATCP(LightningModule):
     @T.no_grad()
     def play_episodes(self, policy=None):
         obs, nodes, _, _ = self.reset()
-        print('COLLECTING DATA ....')     
+        print('ATCP COLLECTING DATA ....')     
         for step in range(self.hparams.samples_per_epoch):
             done = False
             done = np.zeros((1, 1))
@@ -200,6 +202,7 @@ class PPO_ATCP(LightningModule):
             #     pd.DataFrame(done, columns=['done']),
             #     pd.DataFrame(info, columns=['info'])],
             #     axis=1).to_csv('outputs/logs/experiences.csv', mode='a', sep='\t', index=False, header=not path.exists('outputs/logs/experiences.csv'))
+
             self.pltMetrics(reward, nodes, obs, nxt_obs, nxt_sink_obs)    
             obs = nxt_obs            
             self.ep_step += 1
@@ -322,6 +325,7 @@ class PPO_ATCP(LightningModule):
         return dataloader
 
     def training_step(self, batch, batch_idx):
+
         # optimizer = self.optimizers()
         value_opt, policy_opt = self.optimizers()
         obs_b, log_prob_b, action_b, reward_b, done_b, nxt_obs_b = batch        
@@ -390,7 +394,8 @@ class PPO_ATCP(LightningModule):
         
         self.target_val_net.load_state_dict(self.value_net.state_dict())            
         self.target_policy.load_state_dict(self.policy.state_dict())
-        print(f'END EPOCH: {self.current_epoch}*****************')
+        print(f'ATCP END EPOCH: {self.current_epoch}*****************')
+        # time.sleep(1)
         self.play_episodes()
 
     async def run(self):
@@ -405,7 +410,7 @@ class PPO_ATCP(LightningModule):
         #     logger.warn(ex)
 
         # algo = SAC('SAC_CTRL_SSDWSN', lr=1e-3, alpha=0.002, tau=0.1)
-        logger.info('START TRAINING ...')
+        logger.info('ATCP START TRAINING ...')
         # self.tb_logger = SummaryWriter(log_dir="outputs/logs")
         self.tb_logger = SummaryWriter(log_dir="outputs/logs")
         quietRun('chmod -R 777 outputs/logs')
@@ -468,6 +473,7 @@ class PPO_NSFP(LightningModule):
         self.ep_policy_loss = []
         self.ep_entropy = []
         self.ep_step = 0
+        self.tb_logger = None
         self.init_ts = time.time()
         
         self.save_hyperparameters('batch_size', 'obs_time', 'nb_optim_iters', 'policy_lr', 'value_lr', 
@@ -580,7 +586,7 @@ class PPO_NSFP(LightningModule):
     @T.no_grad()
     def play_episodes(self, policy=None):
         obs, nodes, _, _ = self.reset()
-        print('COLLECTING DATA ....')     
+        print('NSFP COLLECTING DATA ....')     
         for step in range(self.hparams.samples_per_epoch):
             done = False
             done = np.zeros((1, 1))
@@ -600,6 +606,7 @@ class PPO_NSFP(LightningModule):
             #     pd.DataFrame(done, columns=['done']),
             #     pd.DataFrame(info, columns=['info'])],
             #     axis=1).to_csv('outputs/logs/experiences.csv', mode='a', sep='\t', index=False, header=not path.exists('outputs/logs/experiences.csv'))
+
             self.pltMetrics(reward, nodes, obs, nxt_obs, nxt_sink_obs)  
             obs = nxt_obs            
             self.ep_step += 1
@@ -716,6 +723,7 @@ class PPO_NSFP(LightningModule):
         return dataloader
 
     def training_step(self, batch, batch_idx):
+        
         # optimizer = self.optimizers()
         value_opt, policy_opt = self.optimizers()
         obs_b, log_prob_b, action_b, reward_b, done_b, nxt_obs_b = batch        
@@ -784,7 +792,8 @@ class PPO_NSFP(LightningModule):
         
         self.target_val_net.load_state_dict(self.value_net.state_dict())            
         self.target_policy.load_state_dict(self.policy.state_dict())
-        print(f'END EPOCH: {self.current_epoch}*****************')
+        print(f'NSFP END EPOCH: {self.current_epoch}*****************')
+        # time.sleep(1)
         self.play_episodes()
 
     async def run(self):
@@ -799,7 +808,7 @@ class PPO_NSFP(LightningModule):
         #     logger.warn(ex)
 
         # algo = SAC('SAC_CTRL_SSDWSN', lr=1e-3, alpha=0.002, tau=0.1)
-        logger.info('START TRAINING ...')
+        logger.info('NSFP START TRAINING ...')
         # self.tb_logger = SummaryWriter(log_dir="outputs/logs")
         self.tb_logger = SummaryWriter(log_dir="outputs/logs")
         quietRun('chmod -R 777 outputs/logs')
@@ -827,52 +836,49 @@ class PPO_NSFP(LightningModule):
         )
         T.autograd.detect_anomaly(True)
         self.play_episodes()
-        try:
-            trainer.fit(self)
-        except Exception as ex:
-            print(ex)
+        trainer.fit(self)
 
 class PPO_MP_ATCNSF(LightningModule):
-    """ DRL-PPO-based Multi-Policy Adaptive Traffic Control and Network State Forecasting
+    """ Network State Forcasting On-Policy PPO_DRL Agent
     """
-    def __init__(self, ctrl, num_envs=1, batch_size=2, obs_time=20, nb_optim_iters=4, hidden_size=256, samples_per_epoch=2,
+    def __init__(self, ctrl, num_envs=1, batch_size=2, obs_time = 20, nb_optim_iters=4, hidden_size=256, samples_per_epoch=2,
                 epoch_repeat=4, policy_lr=1e-4, value_lr=1e-3, lr=1e-3, gamma=0.99, epsilon=0.3, entropy_coef=0.1,
-                loss_fn=F.mse_loss, optim=Adam):
+                loss_fn=F.mse_loss, optim=AdamW):
         super().__init__()
         self.loop = asyncio.get_running_loop()
         self.automatic_optimization = False
         self.ctrl = ctrl
         self.networkGraph = self.ctrl.networkGraph
-
         self.obs_cols = ['port', 'intftypeval', 'datatypeval', 'distance', 'denisty', 'alinks', 'flinks', 'x', 'y', 'z', 'batt', 'delay', 'throughput', \
         'txpackets_val', 'txbytes_val', 'rxpackets_val', 'rxbytes_val', 'drpackets_val', 'txpacketsin_val', 'txbytesin_val', 'rxpacketsout_val', 'rxbytesout_val', 'rptti'] 
         self.cal_cols = ['ts']
-        self.action_cols_atcp = ['isaggr', 'nxhop', 'rptti']
-        self.action_cols_nsfp = ['batt', 'txpackets_val', 'txbytes_val', 'rxpackets_val', 'rxbytes_val']
-        self.action_space_atcp = np.empty((0, len(self.action_cols_atcp)))
-        self.action_space_nsfp = np.empty((0, len(self.action_cols_nsfp)))
+        self.action_pred_cols = ['batt', 'txpackets_val', 'txbytes_val', 'rxpackets_val', 'rxbytes_val']
+        self.action_pred_space = np.empty((0, len(self.action_pred_cols)))
+        self.action_optm_cols = ['isaggr', 'nxhop', 'rptti']
+        self.action_optm_space = np.empty((0, len(self.action_optm_cols)))
+
         self.observation_space = np.empty((0, len(self.obs_cols)+len(self.cal_cols)))
 
         self.obs_dims = self.observation_space.shape[1]
-        self.action_dim_atcp = self.action_space_atcp.shape[1]
-        self.action_dim_nsfp = self.action_space_nsfp.shape[1]
-        
+        self.action_pred_dims = self.action_pred_space.shape[1]
+        self.action_optm_dims = self.action_optm_space.shape[1]
         self.obs_nds = None
-        self.policy_atcp = PPO_Policy(self.obs_dims, hidden_size, self.action_dim_atcp)
-        self.target_policy_atcp = copy.deepcopy(self.policy_atcp)
+        self.policy_pred = PPO_Policy_Pred(self.obs_dims, hidden_size, self.action_pred_dims)
+        self.target_policy_pred = copy.deepcopy(self.policy_pred)
+        self.policy_optm = PPO_Policy(self.obs_dims, hidden_size, self.action_optm_dims)
+        self.target_policy_optm = copy.deepcopy(self.policy_optm)
+        self.value_net_pred = PPO_ValueNet(self.obs_dims, hidden_size)
+        self.target_val_net_pred = copy.deepcopy(self.value_net_pred)
+        self.value_net_optm = PPO_ValueNet(self.obs_dims, hidden_size)
+        self.target_val_net_optm = copy.deepcopy(self.value_net_optm)
 
-        self.policy_nsfp = PPO_Policy_Pred(self.obs_dims, hidden_size, self.action_dim_nsfp)
-        self.target_policy_nsfp = copy.deepcopy(self.policy_nsfp)
-
-        self.value_net = PPO_ValueNet(self.obs_dims+self.action_dim_atcp+self.action_dim_nsfp, hidden_size)
-        self.target_val_net = copy.deepcopy(self.value_net)
-
-        self.buffer= deque(maxlen=samples_per_epoch)
+        self.buffer = deque(maxlen=samples_per_epoch)
         self.num_samples = deque(maxlen=samples_per_epoch)
         self.ep_value_loss = []
         self.ep_policy_loss = []
         self.ep_entropy = []
         self.ep_step = 0
+        self.tb_logger = None
         self.init_ts = time.time()
         
         self.save_hyperparameters('batch_size', 'obs_time', 'nb_optim_iters', 'policy_lr', 'value_lr', 
@@ -899,7 +905,11 @@ class PPO_MP_ATCNSF(LightningModule):
         sink_state = pd.DataFrame(sink_obs, columns=self.obs_cols, dtype=float)
         return data, _nodes, sink_state, _sink_nodes
     
-    def getReward_atcp(self, obs, prv_obs):
+    def getReward_Pred(self, obs, prv_obs, action):
+        R = (((action - prv_obs.get(self.action_pred_cols)) * (obs.get(self.action_pred_cols) - action)) / (prv_obs.get(self.action_pred_cols).max())**2).to_numpy().sum(axis=-1, keepdims=True)
+        return np.nan_to_num(R, nan=0)
+    
+    def getReward_optm(self, obs, prv_obs):
         obs_ts = obs['ts'].mean()
         prv_obs_ts = prv_obs['ts'].mean()
         prv_E = prv_obs['batt'].to_numpy().reshape(-1,1)
@@ -914,26 +924,33 @@ class PPO_MP_ATCNSF(LightningModule):
         
         return np.nan_to_num(R, nan=0)
     
-    def getReward_nsfp(self, obs, prv_obs, action):
-        R = (((action - prv_obs.get(self.action_cols_nsfp)) * (obs.get(self.action_cols_nsfp) - action)) / (prv_obs.get(self.action_cols_nsfp).max())**2).to_numpy().sum(axis=-1, keepdims=True)
-        return np.nan_to_num(R, nan=0)
-    
-    def step(self, action_atcp, action_nsfp, obs, obs_nds):
+    def step(self, action_pred, action_optm, obs, obs_nds):
         try:
-            action_atcp = MinMaxScaler((0,1)).fit_transform(action_atcp)
-            action_nd_atcp = np.hstack((obs_nds, action_atcp))
+            # Calculate mean of action_optm per unique value in obs_nds
+            unique_nds = np.unique(obs_nds, axis=0)
+            mean_actions = np.zeros((len(unique_nds), action_optm.shape[1]))
 
-            act_obs_nsfp = obs.get(self.action_cols_nsfp).to_numpy()
-            scaler_nsfp = MinMaxScaler((0,1)).fit(act_obs_nsfp)
-            action_nsfp =  scaler_nsfp.transform(act_obs_nsfp) + scaler_nsfp.transform(act_obs_nsfp) * action_nsfp
-            action_nsfp = scaler_nsfp.inverse_transform(action_nsfp)
+            for i, nd in enumerate(unique_nds):
+                selected_rows = action_optm[np.where(np.all(obs_nds == nd, axis=1))]
+                mean_actions[i] = np.mean(selected_rows, axis=0)
 
-            nds = np.unique(obs_nds, axis=0)
-            for nd in nds.flatten().tolist():
-                selected_rows = action_atcp[np.where(obs_nds[:, 0] == nd)[0]]
+            # Normalize mean_actions
+            mean_actions = MinMaxScaler((0, 1)).fit_transform(mean_actions)
+
+            # Concatenate mean_actions with unique_nds
+            action_nd_optm = np.hstack((unique_nds, mean_actions))
+
+            act_pred_obs = obs.get(self.action_pred_cols).to_numpy()
+            scaler = MinMaxScaler((0,1)).fit(act_pred_obs)
+            action_pred =  scaler.transform(act_pred_obs) + scaler.transform(act_pred_obs) * action_pred
+            action_pred = scaler.inverse_transform(action_pred)
+
+            for nd in unique_nds.flatten().tolist():
+                # selected_rows = action_nd_optm[np.where(obs_nds[:, 0] == nd)[0]]
                 neighbors = [edge[1] for edge in list(self.networkGraph.getGraph().edges(nbunch=nd, data=True, keys=True))]
                 nd_pos = self.networkGraph.getPosition(nd)
-                act_angle = np.mean(selected_rows, axis=0)[1] * pi # angle between 0 and π radians 
+                # act_angle = np.mean(selected_rows, axis=0)[2] * pi # angle between 0 and π radians 
+                act_angle = action_nd_optm[np.where((action_nd_optm[:, 0] == nd))[0], 2].astype(float) * pi # angle between 0 and π radians 
                 act_nxh_node = nd
                 act_nxh_value = pi
                 for nr in neighbors:
@@ -950,12 +967,14 @@ class PPO_MP_ATCNSF(LightningModule):
                         act_nxh_node = nr
 
                 # action value
-                val = int.to_bytes(ct.DRL_AG_INDEX, 1, 'big', signed=False)+int.to_bytes(1 if np.mean(selected_rows, axis=0)[0] > 0.50 else 0, ct.DRL_AG_LEN, 'big', signed=False)+\
+                val = int.to_bytes(ct.DRL_AG_INDEX, 1, 'big', signed=False)+int.to_bytes(1 if action_nd_optm[np.where((action_nd_optm[:, 0] == nd))[0], 1].astype(float) > 0.50 else 0, ct.DRL_AG_LEN, 'big', signed=False)+\
                     int.to_bytes(ct.DRL_NH_INDEX, 1, 'big', signed=False)+int.to_bytes(Addr(re.sub(r'^.*?.', '', act_nxh_node)[1:]).intValue(), ct.DRL_NH_LEN, 'big', signed=False)+\
-                    int.to_bytes(ct.DRL_RT_INDEX, 1, 'big', signed=False)+int.to_bytes(int(np.mean(selected_rows, axis=0)[2] * (ct.MAX_RP_TTI-ct.MIN_RP_TTI))+ct.MIN_RP_TTI, ct.DRL_RT_LEN, 'big', signed=False)
+                    int.to_bytes(ct.DRL_RT_INDEX, 1, 'big', signed=False)+int.to_bytes(int(action_nd_optm[np.where((action_nd_optm[:, 0] == nd))[0], 3].astype(float) * (ct.MAX_RP_TTI-ct.MIN_RP_TTI))+ct.MIN_RP_TTI, ct.DRL_RT_LEN, 'big', signed=False)+\
+                    int.to_bytes(ct.DRL_DR_INDEX, 1, 'big', signed=False)+int.to_bytes(self.hparams.obs_time, ct.DRL_DR_LEN, 'big', signed=False)
 
+                # send the action to the data-plane
                 sel_route = []
-                init_len = ct.DIST_MAX + 1  
+                init_len = ct.DIST_MAX + 1
                 sinkId = None
                 for sink in self.ctrl.sinks:
                     route = nx.shortest_path(self.networkGraph.getGraph(), source=nd, target=sink)
@@ -968,29 +987,13 @@ class PPO_MP_ATCNSF(LightningModule):
                     route = [Addr(re.sub(r'^.*?.', '', x)[1:]) for x in sel_route]
                     route.reverse()
                     self.loop.run_until_complete(self.ctrl.setDRLAction(net=int(sinkId.split('.')[0]), sinkId=sinkId, sinkAddr=route[0], dst=route[-1], newVal=val, path=route))
-                    # '''
-                    # try:
-                    entry = Entry()
-                    entry.addWindow(Window().setOperator(ct.EQUAL).setSize(ct.W_SIZE_1)
-                        .setLhsOperandType(ct.PACKET).setLhs(ct.DST_INDEX).setRhsOperandType(ct.CONST)
-                        .setRhs(route[0].intValue()))
-                    entry.addWindow(Window().setOperator(ct.EQUAL).setSize(ct.W_SIZE_1)
-                        .setLhsOperandType(ct.PACKET).setLhs(ct.SRC_INDEX).setRhsOperandType(ct.CONST)
-                        .setRhs(route[-1].intValue()))
-                    entry.addWindow(Window.fromString("P.TYP == "+ str(ct.REPORT)))
-                    entry.addAction(DropAction())
-                    entry.getStats().setTtl(int(time.time()))
-                    entry.getStats().setIdle(self.hparams.obs_time)
-                    self.loop.run_until_complete(self.ctrl.setNodeRule(net=int(sinkId.split('.')[0]), sinkId=sinkId, sinkAddr=route[0], dst=route[-1], newVal=entry, path=route))
-                    # except Exception as ex:
-                    #     logger.warn(ex)
 
             obs_tss = obs['ts'].unique().flatten().tolist()# obervation timestamps
-            act_tss = np.hstack((obs['ts'].to_numpy().reshape(-1,1), action_nsfp))
+            act_tss = np.hstack((obs['ts'].to_numpy().reshape(-1,1), action_pred))
             for i in range(self.hparams.obs_time):
-                pred_act = pd.DataFrame(act_tss[np.where(act_tss[:,0] == obs_tss[i])[0], 1:], columns=self.action_cols_nsfp)
-                state, nodes, _, _ = self.networkGraph.getState(nodes=nds, cols=self.action_cols_nsfp)             
-                actual_act = pd.DataFrame(state, columns=self.action_cols_nsfp)
+                pred_act = pd.DataFrame(act_tss[np.where(act_tss[:,0] == obs_tss[i])[0], 1:], columns=self.action_pred_cols)
+                state, nodes, _, _ = self.networkGraph.getState(nodes=unique_nds, cols=self.action_pred_cols)                
+                actual_act = pd.DataFrame(state, columns=self.action_pred_cols)
                 # set predicted value in ctrl graph
 
                 # print pred vs actual
@@ -1021,69 +1024,54 @@ class PPO_MP_ATCNSF(LightningModule):
                 )
                 time.sleep(1)
             
-            next_obs, _, next_sink_obs, _ = self.reset(nds)            
-            reward_atcp = self.getReward_atcp(next_obs, obs)
-            reward_nsfp = self.getReward_nsfp(next_obs, obs, pd.DataFrame(action_nsfp, columns=self.action_cols_nsfp))
+            next_obs, _, next_sink_obs, _ = self.reset(unique_nds)            
+            reward_pred = self.getReward_Pred(next_obs, obs, pd.DataFrame(action_pred, columns=self.action_pred_cols))
+            reward_optm = self.getReward_optm(next_obs, obs)
             done = np.zeros((next_obs.shape[0],1), dtype=bool) #TODO change the logic when to set done to True (since it is a continouse process target optimization are always changing as per the network progress and resource drained)           
             info = np.empty((next_obs.shape[0],1), dtype=str)
-            reward = reward_atcp + reward_nsfp
-            return next_obs, reward, done, info, next_sink_obs
         except Exception as ex:
             print(ex)
             exc_type, exc_obj, exc_tb = exc_info()
             fname = path.split(exc_tb.tb_frame.f_code.co_filename)[1]
             print(exc_type, fname, exc_tb.tb_lineno)
+        return next_obs, reward_pred, reward_optm, done, info, next_sink_obs
     
     @T.no_grad()
     def play_episodes(self, policy=None):
         obs, nodes, _, _ = self.reset()
-        print('COLLECTING DATA ....')  
-        try:
-            for step in range(self.hparams.samples_per_epoch):
-                done = False
-                done = np.zeros((1, 1))
-                log_prob_atcp, action_atcp = self.policy_atcp(obs.to_numpy())
-                action_atcp = action_atcp.detach().cpu().numpy()
-                log_prob_atcp = log_prob_atcp.detach().cpu().numpy()
-                # done[not done.all()] = True if self.epoch_cntr % self.hparams.samples_per_epoch == 0 else done
+        print('COLLECTING DATA ....')     
+        for step in range(self.hparams.samples_per_epoch):
+            done = False
+            done = np.zeros((1, 1))
+            log_prob_pred, action_pred = self.policy_pred(obs.to_numpy())
+            action_pred = action_pred.detach().cpu().numpy()
+            log_prob_pred = log_prob_pred.detach().cpu().numpy()
+            log_prob_optm, action_optm = self.policy_optm(obs.to_numpy())
+            action_optm = action_optm.detach().cpu().numpy()
+            log_prob_optm = log_prob_optm.detach().cpu().numpy()
+            # done[not done.all()] = True if self.epoch_cntr % self.hparams.samples_per_epoch == 0 else done
+            nxt_obs, reward_pred, reward_optm, done, info, nxt_sink_obs  = self.step(action_pred, action_optm, obs, nodes)
+            self.buffer.append((obs.to_numpy(), log_prob_pred, log_prob_optm, action_pred, action_optm, reward_pred, reward_optm, done, nxt_obs.to_numpy()))
+            self.num_samples.append(nxt_obs.shape[0])
 
-                log_prob_nsfp, action_nsfp = self.policy_nsfp(obs.to_numpy())
-                action_nsfp = action_nsfp.detach().cpu().numpy()
-                log_prob_nsfp = log_prob_nsfp.detach().cpu().numpy()
+            # pd.concat([pd.DataFrame(nodes, columns=['node']),
+            #     obs, 
+            #     pd.DataFrame(action, columns=self.action_cols),
+            #     nxt_obs, 
+            #     pd.DataFrame(reward, columns=['reward']),
+            #     pd.DataFrame(done, columns=['done']),
+            #     pd.DataFrame(info, columns=['info'])],
+            #     axis=1).to_csv('outputs/logs/experiences.csv', mode='a', sep='\t', index=False, header=not path.exists('outputs/logs/experiences.csv'))
 
-                nxt_obs, reward, done, info, nxt_sink_obs  = self.step(action_atcp, action_nsfp, obs, nodes)
+            self.pltMetrics(reward_pred, reward_optm, nodes, obs, nxt_obs, nxt_sink_obs)  
+            obs = nxt_obs            
+            self.ep_step += 1
 
-                self.buffer.append((obs.to_numpy(), log_prob_atcp, log_prob_nsfp, action_atcp, action_nsfp, reward, done, nxt_obs.to_numpy()))
-                self.num_samples.append(nxt_obs.shape[0])
-
-                # pd.concat([pd.DataFrame(nodes, columns=['node']),
-                #     obs, 
-                #     pd.DataFrame(action, columns=self.action_cols),
-                #     nxt_obs, 
-                #     pd.DataFrame(reward, columns=['reward']),
-                #     pd.DataFrame(done, columns=['done']),
-                #     pd.DataFrame(info, columns=['info'])],
-                #     axis=1).to_csv('outputs/logs/experiences.csv', mode='a', sep='\t', index=False, header=not path.exists('outputs/logs/experiences.csv'))
-                self.pltMetrics(reward, nodes, obs, nxt_obs, nxt_sink_obs)    
-                obs = nxt_obs            
-                self.ep_step += 1  
-        except Exception as ex:
-            print(ex)
-            exc_type, exc_obj, exc_tb = exc_info()
-            fname = path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-            print(exc_type, fname, exc_tb.tb_lineno)      
-
-    def pltMetrics(self, reward, nodes, obs, nxt_obs, nxt_sink_obs):
-        if self.ep_step == 0 and self.global_step == 0:
-            self.tb_logger.add_scalars('Episode/R', {
-                'R': np.zeros(1)
-                }, global_step=self.ep_step
-            )
-        else:
-            self.tb_logger.add_scalars('Episode/R', {
-                'R': reward.sum()
-                }, global_step=self.ep_step
-            )
+    def pltMetrics(self, reward_pred, reward_optm, nodes, obs, nxt_obs, nxt_sink_obs):
+        self.tb_logger.add_scalars('Episode/R', {
+            'R': reward_pred.sum() + reward_optm.sum()
+            }, global_step=self.ep_step
+        )
         self.tb_logger.add_scalars('Episode/D', {
             'D': nxt_obs['delay'].mean()
             }, global_step=self.ep_step
@@ -1152,25 +1140,26 @@ class PPO_MP_ATCNSF(LightningModule):
     def _dataset(self):
         reshape_fn = lambda x: x.reshape(sum(self.num_samples), -1)
         batch = map(np.vstack, zip(*self.buffer))
-        obs_b, log_prob_b_atcp, log_prob_b_nsfp, action_b_atcp, action_b_nsfp, reward_b, done_b, nxt_obs_b = map(reshape_fn, batch)
+        obs_b, log_prob_pred_b, log_prob_optm_b, action_pred_b, action_optm_b, reward_pred_b, reward_optm_b, done_b, nxt_obs_b = map(reshape_fn, batch)
         for i in range(sum(self.num_samples)):
-            yield obs_b[i], log_prob_b_atcp[i], log_prob_b_nsfp[i], action_b_atcp[i], action_b_nsfp[i], reward_b[i], done_b[i], nxt_obs_b[i]
+            yield obs_b[i], log_prob_pred_b[i], log_prob_optm_b[i], action_pred_b[i], action_optm_b[i], reward_pred_b[i], reward_optm_b[i], done_b[i], nxt_obs_b[i]
 
     def _dataset_shuffle(self):
         reshape_fn = lambda x: x.reshape(sum(self.num_samples), -1)
         batch = map(np.vstack, zip(*self.buffer))
-        obs_b, log_prob_b_atcp, log_prob_b_nsfp, action_b_atcp, action_b_nsfp, reward_b, done_b, nxt_obs_b = map(reshape_fn, batch)
+        obs_b, log_prob_pred_b, log_prob_optm_b, action_pred_b, action_optm_b, reward_pred_b, reward_optm_b, done_b, nxt_obs_b = map(reshape_fn, batch)
         for _ in range(self.hparams.epoch_repeat):
             idx = list(range(sum(self.num_samples)))
             random.shuffle(idx)
             for i in idx:
-                yield obs_b[i], log_prob_b_atcp[i], log_prob_b_nsfp[i], action_b_atcp[i], action_b_nsfp[i], reward_b[i], done_b[i], nxt_obs_b[i]
+                yield obs_b[i], log_prob_pred_b[i], log_prob_optm_b[i], action_pred_b[i], action_optm_b[i], reward_pred_b[i], reward_optm_b[i], done_b[i], nxt_obs_b[i]
 
     def configure_optimizers(self):
-        policy_opt_atcp = self.hparams.optim(self.policy_atcp.parameters(), lr=self.hparams.policy_lr)
-        policy_opt_nsfp = self.hparams.optim(self.policy_nsfp.parameters(), lr=self.hparams.policy_lr)   
-        value_opt = self.hparams.optim(self.value_net.parameters(), lr=self.hparams.value_lr)   
-        return policy_opt_atcp, policy_opt_nsfp, value_opt
+        value_pred_opt = self.hparams.optim(self.value_net_pred.parameters(), lr=self.hparams.value_lr)
+        value_optm_opt = self.hparams.optim(self.value_net_optm.parameters(), lr=self.hparams.value_lr)
+        policy_pred_opt = self.hparams.optim(self.policy_pred.parameters(), lr=self.hparams.policy_lr)  
+        policy_optm_opt = self.hparams.optim(self.policy_optm.parameters(), lr=self.hparams.policy_lr)   
+        return value_pred_opt, value_optm_opt, policy_pred_opt, policy_optm_opt
         # return self.hparams.optim(self.parameters(), lr=self.hparams.lr)
 
     def optimizer_step(self, *args, **kwargs):
@@ -1192,93 +1181,111 @@ class PPO_MP_ATCNSF(LightningModule):
         return dataloader
 
     def training_step(self, batch, batch_idx):
-        try:
-            # optimizer = self.optimizers()
-            policy_opt_atcp, policy_opt_nsfp, value_opt = self.optimizers()
-            obs_b, log_prob_b_atcp, log_prob_b_nsfp, action_b_atcp, action_b_nsfp, reward_b, done_b, nxt_obs_b = batch        
+        
+        # optimizer = self.optimizers()
+        value_pred_opt, value_optm_opt, policy_pred_opt, policy_optm_opt = self.optimizers()
+        obs_b, log_prob_pred_b, log_prob_optm_b, action_pred_b, action_optm_b, reward_pred_b, reward_optm_b, done_b, nxt_obs_b = batch        
 
-            # rev_nxt_obs = self.env.scaler.inverse_transform(T.clone(nxt_obs_b.data).detach().cpu().numpy())
-            
-            state_values = self.value_net(T.hstack((obs_b, action_b_atcp, action_b_nsfp)))
+        # rev_nxt_obs = self.env.scaler.inverse_transform(T.clone(nxt_obs_b.data).detach().cpu().numpy())
+        
+        state_values_pred = self.value_net_pred(obs_b)
+        state_values_optm = self.value_net_optm(obs_b)
 
-            with T.no_grad():
-                _, nxt_action_atcp = self.target_policy_atcp(nxt_obs_b)
-                _, nxt_action_nsfp = self.target_policy_nsfp(nxt_obs_b)
-                nxt_state_values = self.target_val_net(T.cat((obs_b, action_b_atcp, action_b_nsfp), dim=1))
-                # nxt_state_values[done_b] = 0.0 
-                target = reward_b + self.hparams.gamma * nxt_state_values
-            
-            advantages = (target - state_values).detach()
-            advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
+        with T.no_grad():
+            _, nxt_action_pred = self.target_policy_pred(nxt_obs_b)
+            _, nxt_action_optm = self.target_policy_optm(nxt_obs_b)
+            nxt_state_values_pred = self.target_val_net_pred(nxt_obs_b)
+            nxt_state_values_optm = self.target_val_net_optm(nxt_obs_b)
+            # nxt_state_values[done_b] = 0.0 
+            target_pred = reward_pred_b + self.hparams.gamma * nxt_state_values_pred
+            target_optm = reward_optm_b + self.hparams.gamma * nxt_state_values_optm
+        
+        advantages_pred = (target_pred - state_values_pred).detach()
+        advantages_pred = (advantages_pred - advantages_pred.mean()) / (advantages_pred.std() + 1e-8)
 
-            # value_opt
-            value_loss = self.hparams.loss_fn(state_values, target.float())
-            value_opt.zero_grad()
-            # self.manual_backward(value_loss)
-            value_loss.backward()
-            T.nn.utils.clip_grad_norm_(self.value_net.parameters(), max_norm=0.5)
-            value_opt.step()
-            self.tb_logger.add_scalars('Training/Value/Loss', {'loss': value_loss}, global_step=self.global_step)
+        advantages_optm = (target_optm - state_values_optm).detach()
+        advantages_optm = (advantages_optm - advantages_optm.mean()) / (advantages_optm.std() + 1e-8)
 
-            # policy_opt
-            # ATC Policy
-            log_prob_atcp, _ = self.policy_atcp(obs_b)
-            prv_log_prob_atcp = log_prob_b_atcp
-            
-            rho_atcp = T.exp(log_prob_atcp - prv_log_prob_atcp)
-            # rho = log_prob / prv_log_prob
+        # value_pred_opt
+        value_pred_loss = self.hparams.loss_fn(state_values_pred, target_pred.float())
+        value_pred_opt.zero_grad()
+        # self.manual_backward(value_loss)
+        value_pred_loss.backward()
+        T.nn.utils.clip_grad_norm_(self.value_net_pred.parameters(), max_norm=0.5)
+        value_pred_opt.step()
+        # value_optm_opt
+        value_optm_loss = self.hparams.loss_fn(state_values_optm, target_optm.float())
+        value_optm_opt.zero_grad()
+        # self.manual_backward(value_loss)
+        value_optm_loss.backward()
+        T.nn.utils.clip_grad_norm_(self.value_net_optm.parameters(), max_norm=0.5)
+        value_optm_opt.step()
 
-            surrogate_1_atcp = rho_atcp * advantages
-            surrogate_2_atcp = T.clip(rho_atcp, 1 - self.hparams.epsilon, 1 + self.hparams.epsilon) * advantages
+        self.tb_logger.add_scalars('Training/Value/Loss', {'loss': value_pred_loss+value_optm_loss}, global_step=self.global_step)
 
-            policy_loss_atcp = - (T.minimum(surrogate_1_atcp, surrogate_2_atcp) * log_prob_atcp.detach()).mean()
-            policy_opt_atcp.zero_grad()
-            # self.manual_backward(policy_loss_atcp)
-            policy_loss_atcp.backward()
-            T.nn.utils.clip_grad_norm_(self.policy_atcp.parameters(), max_norm=0.5)
-            policy_opt_atcp.step()
+        # policy_pred_opt
+        log_prob_pred, _ = self.policy_pred(obs_b)
+        prv_log_prob_pred = log_prob_pred_b
+        
+        rho_pred = T.exp(log_prob_pred - prv_log_prob_pred)
+        # rho = log_prob / prv_log_prob
 
-            # NSF Policy
-            log_prob_nsfp, _ = self.policy_nsfp(obs_b)
-            prv_log_prob_nsfp = log_prob_b_nsfp
-            
-            rho_nsfp = T.exp(log_prob_nsfp - prv_log_prob_nsfp)
-            # rho = log_prob / prv_log_prob
+        surrogate_1_pred = rho_pred * advantages_pred
+        surrogate_2_pred = T.clip(rho_pred, 1 - self.hparams.epsilon, 1 + self.hparams.epsilon) * advantages_pred
 
-            surrogate_1_nsfp = rho_nsfp * advantages
-            surrogate_2_nsfp = T.clip(rho_nsfp, 1 - self.hparams.epsilon, 1 + self.hparams.epsilon) * advantages
+        policy_pred_loss = - T.minimum(surrogate_1_pred, surrogate_2_pred).mean()
+        policy_pred_opt.zero_grad()
+        # self.manual_backward(value_loss)
+        policy_pred_loss.backward()
+        T.nn.utils.clip_grad_norm_(self.policy_pred.parameters(), max_norm=0.5)
+        policy_pred_opt.step()
 
-            policy_loss_nsfp = - (T.minimum(surrogate_1_nsfp, surrogate_2_nsfp) * log_prob_nsfp.detach()).mean()
-            policy_opt_nsfp.zero_grad()
-            # self.manual_backward(policy_loss_nsfp)
-            policy_loss_nsfp.backward()
-            T.nn.utils.clip_grad_norm_(self.policy_nsfp.parameters(), max_norm=0.5)
-            policy_opt_nsfp.step()
+        # policy_optm_opt
+        log_prob_optm, _ = self.policy_optm(obs_b)
+        prv_log_prob_optm = log_prob_optm_b
+        
+        rho_optm = T.exp(log_prob_optm - prv_log_prob_optm)
+        # rho = log_prob / prv_log_prob
 
-            policy_loss = policy_loss_atcp + policy_loss_nsfp
-            self.tb_logger.add_scalars('Training/Policy/Loss', {'loss': policy_loss}, global_step=self.global_step)
+        surrogate_1_optm = rho_optm * advantages_optm
+        surrogate_2_optm = T.clip(rho_optm, 1 - self.hparams.epsilon, 1 + self.hparams.epsilon) * advantages_optm
 
-            # self.log_dict({"value_loss": value_loss.item(), "policy_loss": policy_loss.item(), "return": reward_b.sum()}, prog_bar=True)
-                    
-            # For simplecity:
-            #         # Total loss is a combination of critic loss and policy loss
-            total_loss = value_loss + policy_loss
-            return total_loss
-        except Exception as ex:
-            print(ex)
-            exc_type, exc_obj, exc_tb = exc_info()
-            fname = path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-            print(exc_type, fname, exc_tb.tb_lineno)
+        policy_optm_loss = - T.minimum(surrogate_1_optm, surrogate_2_optm).mean()
+        policy_optm_opt.zero_grad()
+        # self.manual_backward(value_loss)
+        policy_optm_loss.backward()
+        T.nn.utils.clip_grad_norm_(self.policy_optm.parameters(), max_norm=0.5)
+        policy_optm_opt.step()
+
+        self.tb_logger.add_scalars('Training/Policy/Loss', {'loss': policy_pred_loss+policy_optm_loss}, global_step=self.global_step)
+
+        # self.log_dict({"value_loss": value_loss.item(), "policy_loss": policy_loss.item(), "return": reward_b.sum()}, prog_bar=True)
                 
+        # For simplecity:
+        #         # Total loss is a combination of critic loss and policy loss
+        total_loss = value_pred_loss + value_optm_loss + policy_pred_loss + policy_optm_loss
+
+        # Perform backpropagation
+        # self.manual_backward(total_loss)
+        # optimizer.step()
+        # optimizer.zero_grad()
+
+        # self.tb_logger.add_scalars('Training/Loss', {'loss': total_loss}, global_step=self.global_step)
+        # # Return the total loss for logging purposes
+        # self.log_dict({"loss": total_loss, "return": reward_b.sum()}, prog_bar=True)
+        return total_loss
+
     def on_train_epoch_end(self):
         # if self.best_return > 0:
         #     self.policy.load_state_dict(T.load('outputs/logs/best_policy'))
         #     self.value_net.load_state_dict(T.load('outputs/logs/best_value'))
         
-        self.target_val_net.load_state_dict(self.value_net.state_dict())            
-        self.target_policy_atcp.load_state_dict(self.policy_atcp.state_dict())
-        self.target_policy_nsfp.load_state_dict(self.policy_nsfp.state_dict())
-        print(f'END EPOCH: {self.current_epoch}*****************')
+        self.target_val_net_pred.load_state_dict(self.value_net_pred.state_dict())            
+        self.target_val_net_optm.load_state_dict(self.value_net_optm.state_dict())            
+        self.target_policy_pred.load_state_dict(self.policy_pred.state_dict())
+        self.target_policy_optm.load_state_dict(self.policy_optm.state_dict())
+        print(f'NSFP END EPOCH: {self.current_epoch}*****************')
+        # time.sleep(1)
         self.play_episodes()
 
     async def run(self):
@@ -1293,7 +1300,7 @@ class PPO_MP_ATCNSF(LightningModule):
         #     logger.warn(ex)
 
         # algo = SAC('SAC_CTRL_SSDWSN', lr=1e-3, alpha=0.002, tau=0.1)
-        logger.info('START TRAINING ...')
+        logger.info('NSFP START TRAINING ...')
         # self.tb_logger = SummaryWriter(log_dir="outputs/logs")
         self.tb_logger = SummaryWriter(log_dir="outputs/logs")
         quietRun('chmod -R 777 outputs/logs')
@@ -1316,12 +1323,18 @@ class PPO_MP_ATCNSF(LightningModule):
             log_every_n_steps=1,
             # callbacks=[checkpoint_callback],
             # logger=self.tb_logger,
-            reload_dataloaders_every_n_epochs = 1,              
+            reload_dataloaders_every_n_epochs = 1,
             # callbacks=[EarlyStopping(monitor='outputs/Q-Loss', mode='min', patience=1000)]
         )
         T.autograd.detect_anomaly(True)
         self.play_episodes()
-        trainer.fit(self)
+        try:
+            trainer.fit(self)
+        except Exception as ex:
+            print(ex)
+            exc_type, exc_obj, exc_tb = exc_info()
+            fname = path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+            print(exc_type, fname, exc_tb.tb_lineno)
 
 class RPLS(LightningModule):
     """ Adaptive Traffic Controll Off-Policy RPLS Agent
