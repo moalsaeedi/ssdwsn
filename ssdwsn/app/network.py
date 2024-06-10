@@ -9,7 +9,7 @@ import torch.nn.functional as F
 import torch.nn as nn
 import torch.optim as optim
 from torch.autograd import Variable
-from torch.distributions import Categorical, Normal
+from torch.distributions import Categorical, Normal, MultivariateNormal
 from os import cpu_count, path
 from ssdwsn.util.utils import quietRun, CustomFormatter
 
@@ -590,6 +590,80 @@ class PPO_Policy_Pred(nn.Module):
         self.norm2 = nn.LayerNorm(input_dim).to(device)
         self.dropout = nn.Dropout(dropout).to(device)
 
+        self.linear_mu = nn.Linear(input_dim, action_dim).to(device)
+        self.linear_cov = nn.Linear(input_dim, action_dim * action_dim).to(device)
+
+        self.logsigmoid = nn.LogSigmoid().to(device)
+
+    def forward(self, x):
+        if isinstance(x, np.ndarray):
+            x = T.from_numpy(x).to(device)
+            # x = T.tensor(x).float().to(device)    
+        
+        x = self.norm(x.float())
+        '''
+        # position encoding
+        pe = T.zeros_like(x).to(device)
+        position = T.arange(0, pe.shape[0], dtype=T.float).unsqueeze(1)
+        div_term = T.exp(T.arange(0, pe.shape[1], 2).float() * -(log(10000.0) / pe.shape[1]))
+        
+        pe[:, 0::2] = T.sin(position * div_term)
+        pe[:, 1::2] = T.cos(position * div_term)
+        x = x + pe
+        '''
+        # self attention
+        attn_output = self.self_attn(x, x, x)
+        x = self.norm1(x + self.dropout(attn_output))
+        ff_output = self.ff(x)
+        x = self.norm2(x + self.dropout(ff_output))
+        
+        '''
+        log_prob = self.logsigmoid(self.fc(x))
+        action = T.exp(log_prob)
+        log_prob = log_prob.sum(dim=-1, keepdim=True)
+        '''
+        # '''
+        # action prob distribution
+        loc = self.linear_mu(x)
+        loc = T.tanh(loc) * 1
+        # Covariance matrix
+        cov_flat = self.linear_cov(x)
+        action_dim = loc.shape[-1]
+        cov_matrix = cov_flat.view(-1, action_dim, action_dim)
+        # Ensure covariance matrix is positive semi-definite
+        cov_matrix = T.bmm(cov_matrix, cov_matrix.transpose(1, 2))
+        dist = MultivariateNormal(loc, cov_matrix)
+        action = dist.rsample()
+        log_prob = dist.log_prob(action).reshape(action.shape[0], -1)
+        log_prob = log_prob.sum(dim=-1, keepdim=True)        
+        log_prob -= (2* (np.log(2) - action - F.softplus(-2*action))).sum(dim=-1, keepdim=True)
+        # entropy = dist.entropy().sum(dim=-1, keepdim=True)
+        # '''
+        return log_prob, action
+        
+class PPO_Policy_Pred_(nn.Module):
+    """Gradient Policy Network (to predict an action following a normal distribution (infinit possible of actions) of an observation)
+    Args:
+        nn (_type_): neural network
+    """
+    def __init__(self, input_dim, hidden_size, action_dim, dropout=0.1):
+        super().__init__()
+
+        self.norm = nn.LayerNorm(input_dim).to(device)
+        # self.self_attn = SelfAttention(input_dim).to(device)
+        self.self_attn = MultiHeadAttention(input_dim, input_dim).to(device)
+        self.norm1 = nn.LayerNorm(input_dim).to(device)
+        self.ff = nn.Sequential(
+            # nn.BatchNorm1d(input_dim),
+            nn.Linear(input_dim, hidden_size),
+            nn.ReLU(),
+            nn.Linear(hidden_size, hidden_size),
+            nn.ReLU(),
+            nn.Linear(hidden_size, input_dim)
+        ).to(device)
+        self.norm2 = nn.LayerNorm(input_dim).to(device)
+        self.dropout = nn.Dropout(dropout).to(device)
+
         self.mu_fc = nn.Linear(input_dim, action_dim).to(device)
         self.std_fc = nn.Linear(input_dim, action_dim).to(device)
         self.logsigmoid = nn.LogSigmoid().to(device)
@@ -660,8 +734,83 @@ class PPO_ValueNet(nn.Module):
             x = T.from_numpy(x).to(device)
         x = self.ff(self.norm(x.float()))
         return x
-    
+
 class PPO_Policy(nn.Module):
+    """Gradient Policy Network (to predict an action following a normal distribution (infinit possible of actions) of an observation)
+    Args:
+        nn (_type_): neural network
+    """
+    def __init__(self, input_dim, hidden_size, action_dim, dropout=0.1):
+        super().__init__()
+
+        self.norm = nn.LayerNorm(input_dim).to(device)
+        # self.self_attn = SelfAttention(input_dim).to(device)
+        self.self_attn = MultiHeadAttention(input_dim, input_dim).to(device)
+        self.norm1 = nn.LayerNorm(input_dim).to(device)
+        self.ff = nn.Sequential(
+            # nn.BatchNorm1d(input_dim),
+            nn.Linear(input_dim, hidden_size),
+            NewGELU(),
+            nn.Linear(hidden_size, hidden_size),
+            NewGELU(),
+            nn.Linear(hidden_size, input_dim)
+        ).to(device)
+        self.norm2 = nn.LayerNorm(input_dim).to(device)
+        self.dropout = nn.Dropout(dropout).to(device)
+
+        # Get mean and covariance matrix elements of possible actions
+        self.linear_mu = nn.Linear(input_dim, action_dim).to(device)
+        self.linear_cov = nn.Linear(input_dim, action_dim * action_dim).to(device)
+        
+        self.logsigmoid = nn.LogSigmoid().to(device)
+
+    def forward(self, x):
+        if isinstance(x, np.ndarray):
+            x = T.from_numpy(x).to(device)
+            # x = T.tensor(x).float().to(device)    
+        
+        x = self.norm(x.float())
+        '''
+        # position encoding
+        pe = T.zeros_like(x).to(device)
+        position = T.arange(0, pe.shape[0], dtype=T.float).unsqueeze(1)
+        div_term = T.exp(T.arange(0, pe.shape[1], 2).float() * -(log(10000.0) / pe.shape[1]))
+        
+        pe[:, 0::2] = T.sin(position * div_term)
+        pe[:, 1::2] = T.cos(position * div_term)
+        x = x + pe
+        '''
+        # self attention
+        attn_output = self.self_attn(x, x, x)
+        x = self.norm1(x + self.dropout(attn_output))
+        ff_output = self.ff(x)
+        x = self.norm2(x + self.dropout(ff_output))
+        
+        '''
+        log_prob = self.logsigmoid(self.fc(x))
+        action = T.exp(log_prob)
+        log_prob = log_prob.sum(dim=-1, keepdim=True)
+        '''
+        # '''
+        # action prob distribution
+        loc = self.linear_mu(x)
+        loc = T.tanh(loc) * 1
+        # Covariance matrix
+        cov_flat = self.linear_cov(x)
+        action_dim = loc.shape[-1]
+        cov_matrix = cov_flat.view(-1, action_dim, action_dim)
+        # Ensure covariance matrix is positive semi-definite
+        cov_matrix = T.bmm(cov_matrix, cov_matrix.transpose(1, 2))
+        dist = MultivariateNormal(loc, cov_matrix)
+        action = dist.rsample()
+        log_prob = dist.log_prob(action).reshape(action.shape[0], -1)
+        log_prob = log_prob.sum(dim=-1, keepdim=True)        
+        log_prob -= (2* (np.log(2) - action - F.softplus(-2*action))).sum(dim=-1, keepdim=True)
+        # entropy = dist.entropy().sum(dim=-1, keepdim=True)
+        # '''
+        return log_prob, action
+        
+class PPO_Policy_(nn.Module):
     """Gradient Policy Network (to predict an action following a normal distribution (infinit possible of actions) of an observation)
     Args:
         nn (_type_): neural network
