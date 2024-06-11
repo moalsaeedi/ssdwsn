@@ -135,11 +135,11 @@ class PPO_ATCP(LightningModule):
         for nd, act in act_nds.items():
             neighbors = [edge[1] for edge in list(self.networkGraph.getGraph().edges(nbunch=nd, data=True, keys=True))]
             nd_pos = self.networkGraph.getPosition(nd)
+            src_dist = self.networkGraph.getDistance(nd)
             act_angle = act[1] * pi # angle between 0 and π radians
             act_nxh_node = nd
-            act_nxh_value = pi
+            vl = pi
             for nr in neighbors:
-                src_dist = self.networkGraph.getDistance(nd)
                 dst_dist = self.networkGraph.getDistance(nr)
                 nd_nr_edge = self.networkGraph.getEdge(nd, nr)
                 nr_pos = self.networkGraph.getPosition(nr)
@@ -147,8 +147,9 @@ class PPO_ATCP(LightningModule):
                 x = nr_pos[0] - nd_pos[0]
                 angle = atan2(y, x)
                 angle = angle if angle > 0 else (angle + (2*pi))
-                vl = abs(act_angle - angle)
-                if vl < act_nxh_value and src_dist > dst_dist:
+                act_nxh_val = abs(act_angle - angle)
+                if act_nxh_val < vl and src_dist > dst_dist:
+                    vl = act_nxh_val
                     act_nxh_node = nr
 
             # action value
@@ -949,12 +950,12 @@ class PPO_MP_ATCNSF(LightningModule):
                 # selected_rows = action_nd_optm[np.where(obs_nds[:, 0] == nd)[0]]
                 neighbors = [edge[1] for edge in list(self.networkGraph.getGraph().edges(nbunch=nd, data=True, keys=True))]
                 nd_pos = self.networkGraph.getPosition(nd)
+                src_dist = self.networkGraph.getDistance(nd)
                 # act_angle = np.mean(selected_rows, axis=0)[2] * pi # angle between 0 and π radians 
                 act_angle = action_nd_optm[np.where((action_nd_optm[:, 0] == nd))[0], 2].astype(float) * pi # angle between 0 and π radians 
                 act_nxh_node = nd
-                act_nxh_value = pi
+                vl = pi
                 for nr in neighbors:
-                    src_dist = self.networkGraph.getDistance(nd)
                     dst_dist = self.networkGraph.getDistance(nr)
                     nd_nr_edge = self.networkGraph.getEdge(nd, nr)
                     nr_pos = self.networkGraph.getPosition(nr)
@@ -962,8 +963,9 @@ class PPO_MP_ATCNSF(LightningModule):
                     x = nr_pos[0] - nd_pos[0]
                     angle = atan2(y, x)
                     angle = angle if angle > 0 else (angle + (2*pi))
-                    vl = abs(act_angle - angle)
-                    if vl < act_nxh_value and src_dist > dst_dist:
+                    act_nxh_val = abs(act_angle - angle)
+                    if act_nxh_val < vl and src_dist > dst_dist:
+                        vl = act_nxh_val
                         act_nxh_node = nr
 
                 # action value
