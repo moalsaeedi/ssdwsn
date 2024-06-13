@@ -631,7 +631,14 @@ class PPO_Policy_Pred(nn.Module):
         action_dim = loc.shape[-1]
         cov_matrix = cov_flat.view(-1, action_dim, action_dim)
         # Ensure covariance matrix is positive semi-definite
-        cov_matrix = T.bmm(cov_matrix, cov_matrix.transpose(1, 2))
+        cov_matrix = T.bmm(cov_matrix, cov_matrix.transpose(1, 2))   
+        # Reduce exploration by scaling down the covariance matrix
+        scaling_factor = 1e-3  # Scale down the covariance matrix
+        cov_matrix = cov_matrix * scaling_factor
+        
+        # Add a small value to the diagonal for numerical stability
+        diag_eps = 1e-5 * T.eye(action_dim, device=device).unsqueeze(0)
+        cov_matrix += diag_eps
         dist = MultivariateNormal(loc, cov_matrix)
         action = dist.rsample()
         log_prob = dist.log_prob(action).reshape(action.shape[0], -1)
@@ -800,7 +807,14 @@ class PPO_Policy(nn.Module):
         action_dim = loc.shape[-1]
         cov_matrix = cov_flat.view(-1, action_dim, action_dim)
         # Ensure covariance matrix is positive semi-definite
-        cov_matrix = T.bmm(cov_matrix, cov_matrix.transpose(1, 2))
+        cov_matrix = T.bmm(cov_matrix, cov_matrix.transpose(1, 2))   
+        # Reduce exploration by scaling down the covariance matrix
+        scaling_factor = 1e-3  # Scale down the covariance matrix
+        cov_matrix = cov_matrix * scaling_factor
+        
+        # Add a small value to the diagonal for numerical stability
+        diag_eps = 1e-5 * T.eye(action_dim, device=device).unsqueeze(0)
+        cov_matrix += diag_eps
         dist = MultivariateNormal(loc, cov_matrix)
         action = dist.rsample()
         log_prob = dist.log_prob(action).reshape(action.shape[0], -1)
