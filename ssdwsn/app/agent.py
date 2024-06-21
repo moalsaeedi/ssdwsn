@@ -501,8 +501,10 @@ class PPO_NSFP(LightningModule):
         sink_state = pd.DataFrame(sink_obs, columns=self.obs_cols, dtype=float)
         return data, _nodes, sink_state, _sink_nodes
     
-    def getReward(self, obs, prv_obs, action):
-        R = (((action - prv_obs.get(self.action_cols)) * (obs.get(self.action_cols) - action)) / (prv_obs.get(self.action_cols).max())**2).to_numpy().sum(axis=-1, keepdims=True)
+    def getReward(self, obs, prv_obs, action):        
+        # R = (((action - prv_obs.get(self.action_cols)) * (obs.get(self.action_cols) - action)) / (prv_obs.get(self.action_cols).max())**2).to_numpy().sum(axis=-1, keepdims=True)
+        # enhanced reward
+        R = -(((action - (prv_obs.get(self.action_cols) + obs.get(self.action_cols))/2)**2) / (prv_obs.get(self.action_cols).max())**2).to_numpy().sum(axis=-1, keepdims=True)
         return np.nan_to_num(R, nan=0)
 
     def step(self, action, obs, obs_nds):

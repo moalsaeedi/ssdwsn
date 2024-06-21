@@ -567,7 +567,7 @@ class PPO_ValueNet_Pred(nn.Module):
         x = self.ff(self.norm(x.float()))
         return x
     
-class PPO_Policy_Pred(nn.Module):
+class PPO_Policy_Pred_(nn.Module):
     """Gradient Policy Network (to predict an action following a normal distribution (infinit possible of actions) of an observation)
     Args:
         nn (_type_): neural network
@@ -648,7 +648,7 @@ class PPO_Policy_Pred(nn.Module):
         # '''
         return log_prob, action
         
-class PPO_Policy_Pred_(nn.Module):
+class PPO_Policy_Pred(nn.Module):
     """Gradient Policy Network (to predict an action following a normal distribution (infinit possible of actions) of an observation)
     Args:
         nn (_type_): neural network
@@ -742,7 +742,7 @@ class PPO_ValueNet(nn.Module):
         x = self.ff(self.norm(x.float()))
         return x
 
-class PPO_Policy(nn.Module):
+class PPO_Policy_(nn.Module):
     """Gradient Policy Network (to predict an action following a normal distribution (infinit possible of actions) of an observation)
     Args:
         nn (_type_): neural network
@@ -824,7 +824,7 @@ class PPO_Policy(nn.Module):
         # '''
         return log_prob, action
         
-class PPO_Policy_(nn.Module):
+class PPO_Policy(nn.Module):
     """Gradient Policy Network (to predict an action following a normal distribution (infinit possible of actions) of an observation)
     Args:
         nn (_type_): neural network
