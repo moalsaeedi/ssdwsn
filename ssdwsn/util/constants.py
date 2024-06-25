@@ -310,6 +310,64 @@ class Constants:
     # Receive-Energy-Consumed = Receive-Current * Voltage * Time -for-which-node-receives-packets
     # IdleMode-Energy-Consumed = IdleMode-Current * Voltage * Time-in-Idle-Mode
     # SleepMode-Energy-Consumed = SleepMode-Current * Voltage * Time-in-sleep-mode
+
+    # Example Calculation
+
+    # Let's assume the following parameters for a MICAz mote based on typical datasheet values:
+
+    # Power consumed during transmission (PTXPTX​) = 52.2 mW (milliwatts)
+    # Power consumed during reception (PRXPRX​) = 59.1 mW
+    # Power consumed during idle (PidlePidle​) = 0.96 mW
+    # Power consumed during sleep (PsleepPsleep​) = 0.003 mW
+    # Duration of transmission (TTXTTX​) = 1 second
+    # Duration of reception (TRXTRX​) = 1 second
+    # Duration in idle (TidleTidle​) = 10 seconds
+    # Duration in sleep (TsleepTsleep​) = 100 seconds
+
+    # Calculate Transmit Energy Consumption:
+    # ETX=PTX⋅TTX=52.2 mW⋅1 s=52.2 mJ
+    # ETX​=PTX​⋅TTX​=52.2mW⋅1s=52.2mJ
+
+    # where 1 milliwatt (mW) = 1 millijoule per second (mJ/s).
+
+    # Calculate Receive Energy Consumption:
+    # ERX=PRX⋅TRX=59.1 mW⋅1 s=59.1 mJ
+    # ERX​=PRX​⋅TRX​=59.1mW⋅1s=59.1mJ
+
+    # Calculate Idle Energy Consumption:
+    # Eidle=Pidle⋅Tidle=0.96 mW⋅10 s=9.6 mJ
+    # Eidle​=Pidle​⋅Tidle​=0.96mW⋅10s=9.6mJ
+
+    # Calculate Sleep Energy Consumption:
+    # Esleep=Psleep⋅Tsleep=0.003 mW⋅100 s=0.3 mJ
+    # Esleep​=Psleep​⋅Tsleep​=0.003mW⋅100s=0.3mJ
+
+    # Calculate Total Energy Consumption:
+    # Etotal=ETX+ERX+Eidle+Esleep=52.2 mJ+59.1 mJ+9.6 mJ+0.3 mJ=121.2 mJ
+    # Etotal​=ETX​+ERX​+Eidle​+Esleep​=52.2mJ+59.1mJ+9.6mJ+0.3mJ=121.2mJ
+
+    # Given the current draw values from the MICAz datasheet and assuming a voltage of 3V, the energy consumption for each state is calculated as follows:
+
+    # Transmit Energy Consumption (ETXETX​):
+    # ETX=PTX⋅TTX⋅V=17.4 mA×1 s×3 V=0.0522 J
+    # ETX​=PTX​⋅TTX​⋅V=17.4mA×1s×3V=0.0522J
+
+    # Receive Energy Consumption (ERXERX​):
+    # ERX=PRX⋅TRX⋅V=19.7 mA×1 s×3 V=0.0591 J
+    # ERX​=PRX​⋅TRX​⋅V=19.7mA×1s×3V=0.0591J
+
+    # Idle Energy Consumption (EidleEidle​):
+    # Eidle=Pidle⋅Tidle⋅V=20 μA×10 s×3 V=0.0006 J
+    # Eidle​=Pidle​⋅Tidle​⋅V=20μA×10s×3V=0.0006J
+
+    # Sleep Energy Consumption (EsleepEsleep​):
+    # Esleep=Psleep⋅Tsleep⋅V=1 μA×100 s×3 V=0.0003 J
+    # Esleep​=Psleep​⋅Tsleep​⋅V=1μA×100s×3V=0.0003J
+
+    # Total Energy Consumption (EtotalEtotal​):
+    # Etotal=ETX+ERX+Eidle+Esleep=0.0522 J+0.0591 J+0.0006 J+0.0003 J=0.1122 J
+    # Etotal​=ETX​+ERX​+Eidle​+Esleep​=0.0522J+0.0591J+0.0006J+0.0003J=0.1122J
+
     # Neighbor Constants
     DEFAULT = 0xFF
     
