@@ -303,7 +303,7 @@ class Constants:
     RADIO_RX = 19.7 # mC spent every 1 sec (Radio Rx per second)
     BATT_LEVEL = 5000000 # default simulation initial energy
     MAX_ENRCONS = 5 * RADIO_RX # maximum energy consumption every 1 sec
-    # 50000 mC energy, which is 50000 * 1.5 = 75000 mJ (75000/9000000 = 0.0083% mJ remaining energy of 1 AA battery)
+    # 50000 mC energy, which is 50000 * 1.5 = 75000 mJ (75000/13500000 = 0.0055% mJ remaining energy of 1 AA battery)
     # The energy consumption can be calculated in Joules as follows:
 
     # Transmit-Energy-Consumed = Transmit-Current * Voltage * Time-for-which-node-transmits-packets
