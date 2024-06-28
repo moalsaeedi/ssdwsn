@@ -257,7 +257,7 @@ class Constants:
 
     # 6lowpan protocol on MicaZ mote
 
-    #MICAz (Crossbow Technology Inc. 2012)
+    #MICAz (Crossbow Technology Inc. 2012) with CC2420 radio transceiver
     # The MICAz radio energy model is used for
     # low power wireless sensor network. The data rate of MICAz
     # is 250 Kbps. The transmission and receiving currents are 19
