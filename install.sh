@@ -3,7 +3,7 @@
 check_virtualenv() {
     if ! command -v virtualenv &> /dev/null; then
         echo "virtualenv is not installed. Installing..."
-        sudo python3.9 -m pip install --user virtualenv
+        sudo python3 -m pip install --user virtualenv
         echo "virtualenv installation complete."
     fi
 }
@@ -43,7 +43,7 @@ install() {
         return 1
     fi
 
-    sudo python3.9 -m venv "$env_name"
+    sudo python3 -m venv "$env_name"
     sudo chmod -R 777 "."
     source "./$env_name/bin/activate"
     sudo mkdir outputs/logs
@@ -68,13 +68,13 @@ run() {
     source "./$env_name/bin/activate"    
     lsof -nti:6006 | xargs kill -9
     lsof -nti:4455 | xargs kill -9
-    sudo "./$env_name/bin/python3.9" setup.py install
+    sudo "./$env_name/bin/python3" setup.py install
     sudo rm -r outputs/logs/*
     sudo rm -r outputs/plots/*
     sudo chmod -R 777 "."
     tensorboard --logdir outputs/logs &
-    "./$env_name/bin/python3.9" ssdwsn/util/plot/app.py &
-    sudo "./$env_name/bin/python3.9" ssdwsn/main.py
+    "./$env_name/bin/python3" ssdwsn/util/plot/app.py &
+    sudo "./$env_name/bin/python3" ssdwsn/main.py
 }
 
 clean() {
@@ -89,7 +89,7 @@ clean() {
     sudo rm -r ssdwsn/data/__pycache__
     sudo rm -r ssdwsn/openflow/__pycache__
     sudo rm -r ssdwsn/util/__pycache__
-    "pkill -9 ./$env_name/bin/python3.9 | kill -9 $(ps -A | grep python | awk '{print $1}')"
+    "pkill -9 ./$env_name/bin/python3 | kill -9 $(ps -A | grep python | awk '{print $1}')"
 }
 
 uninstall() {
