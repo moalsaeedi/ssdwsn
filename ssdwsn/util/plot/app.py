@@ -101,12 +101,12 @@ async def disconnect(sid):
 async def showgraph(sid, data):
     await sio.emit('sr_showgraph', data)
     # await saveGraph(data)
-    # await sio.emit('sr_checkgraph', broadcast=True)
+    # await sio.emit('sr_checkgraph')
     return 'Graph Re-Rendered!'
 
 @sio.event
 async def start(sid, data):
-    await sio.emit('sr_start', data, broadcast=True)
+    await sio.emit('sr_start', data)
     global thr1
     # global thr2
     with thread_lock:
@@ -118,22 +118,22 @@ async def start(sid, data):
 
 @sio.event
 async def pause(sid):
-    await sio.emit('sr_pause', broadcast=True)
+    await sio.emit('sr_pause')
     return 'Pause Simulation!'
 
 @sio.event
 async def resume(sid):
-    await sio.emit('sr_resume', broadcast=True)
+    await sio.emit('sr_resume')
     return 'Resume Simulation!'
 
 @sio.event
 async def reset(sid):
-    await sio.emit('sr_reset', broadcast=True)
+    await sio.emit('sr_reset')
     return 'Reset Simulation!'
 
 @sio.event
 async def stop(sid):
-    await sio.emit('sr_stop', broadcast=True)
+    await sio.emit('sr_stop')
     return 'Stop Simulation!'
 
 @sio.event
@@ -175,7 +175,7 @@ async def getresources(sid):
 
 @sio.event
 async def resources(sid, data):
-    await sio.emit('sr_resources', data, broadcast=True)
+    await sio.emit('sr_resources', data)
 
 @sio.event
 async def setstate(sid, data):
@@ -196,7 +196,7 @@ async def nodecolor(sid, data):
 @sio.event
 async def udneighs(sid, data):
     await sio.emit('sr_udneighs', data['data'], namespace=data['ns'])
-    # await sio.emit('sr_udneighs', data, broadcast=True)
+    # await sio.emit('sr_udneighs', data)
 
 @sio.event
 async def savetopo(sid, data):

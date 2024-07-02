@@ -27,8 +27,8 @@ pexpect==4.9.0
 protobuf==4.25.1
 psutil==5.9.6
 pyOpenSSL
-python-engineio==4.3.1
-python-socketio==5.5.1
+python-engineio==4.9.1
+python-socketio==5.11.3
 webencodings==0.5.1
 websockets==10.3
 pytorch_lightning==2.1.2
