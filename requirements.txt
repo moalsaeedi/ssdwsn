@@ -1,5 +1,5 @@
 aiofiles==23.2.1
-aiohttp==3.9.1
+aiohttp==3.9.5
 attr==0.3.2
 ConfigParser==6.0.0
 contextlib2==21.6.0
