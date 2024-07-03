@@ -936,24 +936,27 @@ class Node:
                     await self.updateStats('rptti')
                 # '''
                 idx += ct.DRL_RT_LEN+1
-            if val[idx] == ct.DRL_DR_INDEX:
+            try:
+                if val[idx] == ct.DRL_DR_INDEX:
 
-                entry = Entry()
-                entry.addWindow(Window().setOperator(ct.EQUAL).setSize(ct.W_SIZE_1)
-                    .setLhsOperandType(ct.PACKET).setLhs(ct.DST_INDEX).setRhsOperandType(ct.CONST)
-                    .setRhs(self.sinkAddress.intValue()))
-                entry.addWindow(Window().setOperator(ct.EQUAL).setSize(ct.W_SIZE_1)
-                    .setLhsOperandType(ct.PACKET).setLhs(ct.SRC_INDEX).setRhsOperandType(ct.CONST)
-                    .setRhs(self.myAddress.intValue()))
-                entry.addWindow(Window.fromString("P.TYP == "+ str(ct.REPORT)))
-                entry.addAction(DropAction())
-                entry.getStats().setTtl(int(time.time()))
-                entry.getStats().setIdle(int.from_bytes(val[idx+1:idx+1+ct.DRL_DR_LEN], byteorder='big', signed=False))
+                    entry = Entry()
+                    entry.addWindow(Window().setOperator(ct.EQUAL).setSize(ct.W_SIZE_1)
+                        .setLhsOperandType(ct.PACKET).setLhs(ct.DST_INDEX).setRhsOperandType(ct.CONST)
+                        .setRhs(self.sinkAddress.intValue()))
+                    entry.addWindow(Window().setOperator(ct.EQUAL).setSize(ct.W_SIZE_1)
+                        .setLhsOperandType(ct.PACKET).setLhs(ct.SRC_INDEX).setRhsOperandType(ct.CONST)
+                        .setRhs(self.myAddress.intValue()))
+                    entry.addWindow(Window.fromString("P.TYP == "+ str(ct.REPORT)))
+                    entry.addAction(DropAction())
+                    entry.getStats().setTtl(int(time.time()))
+                    entry.getStats().setIdle(int.from_bytes(val[idx+1:idx+1+ct.DRL_DR_LEN], byteorder='big', signed=False))
 
-                if len(entry.windows):
-                    await self.insertRule(entry)
+                    if len(entry.windows):
+                        await self.insertRule(entry)
 
-                idx += ct.DRL_DR_LEN+1
+                    idx += ct.DRL_DR_LEN+1
+            except:
+                pass
 
         elif conf == ConfigProperty.IS_AGGR.getValue():
             self.isAggr = bool(int.from_bytes(val, byteorder='big', signed=False))
