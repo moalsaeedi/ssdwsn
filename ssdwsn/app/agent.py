@@ -408,7 +408,7 @@ class PPO_ATCP(LightningModule):
         #     # quietRun('rm -r outputs/content/videos/')
         #     # quietRun('tensorboard --logdir outputs/logs/')
         # except Exception as ex:
-        #     logger.warn(ex)
+        #     logger.warning(ex)
 
         # algo = SAC('SAC_CTRL_SSDWSN', lr=1e-3, alpha=0.002, tau=0.1)
         logger.info('ATCP START TRAINING ...')
@@ -542,7 +542,7 @@ class PPO_NSFP(LightningModule):
                 entry.getStats().setIdle(self.hparams.obs_time)
                 self.loop.run_until_complete(self.ctrl.setNodeRule(net=int(sinkId.split('.')[0]), sinkId=sinkId, sinkAddr=route[0], dst=route[-1], newVal=entry, path=route))
                 # except Exception as ex:
-                #     logger.warn(ex)
+                #     logger.warning(ex)
 
         obs_tss = obs['ts'].unique().flatten().tolist()# obervation timestamps
         act_tss = np.hstack((obs['ts'].to_numpy().reshape(-1,1), action))
@@ -808,7 +808,7 @@ class PPO_NSFP(LightningModule):
         #     # quietRun('rm -r outputs/content/videos/')
         #     # quietRun('tensorboard --logdir outputs/logs/')
         # except Exception as ex:
-        #     logger.warn(ex)
+        #     logger.warning(ex)
 
         # algo = SAC('SAC_CTRL_SSDWSN', lr=1e-3, alpha=0.002, tau=0.1)
         logger.info('NSFP START TRAINING ...')
@@ -909,7 +909,7 @@ class PPO_MP_ATCNSF(LightningModule):
         return data, _nodes, sink_state, _sink_nodes
     
     def getReward_Pred(self, obs, prv_obs, action):
-        R = (((action - prv_obs.get(self.action_pred_cols)) * (obs.get(self.action_pred_cols) - action)) / (prv_obs.get(self.action_pred_cols).max())**2).to_numpy().sum(axis=-1, keepdims=True)
+        R = -(((action - (prv_obs.get(self.action_pred_cols) + obs.get(self.action_pred_cols))/2)**2) / (prv_obs.get(self.action_pred_cols).max())**2).to_numpy().sum(axis=-1, keepdims=True)
         return np.nan_to_num(R, nan=0)
     
     def getReward_optm(self, obs, prv_obs):
@@ -922,6 +922,8 @@ class PPO_MP_ATCNSF(LightningModule):
         E = obs['batt'].to_numpy().reshape(-1,1)
         EC = ((prv_E - E)/(obs_ts - prv_obs_ts)).reshape(-1,1)
         RT = obs['rptti'].to_numpy().reshape(-1,1)
+        # LD = (obs['txpackets_val'].to_numpy().reshape(-1,1) - prv_obs['txpackets_val'].to_numpy().reshape(-1,1)) + \
+        #     (obs['rxpackets_val'].to_numpy().reshape(-1,1) - prv_obs['rxpackets_val'].to_numpy().reshape(-1,1))
         # R = TH/ct.MAX_BANDWIDTH + 4 - D/ct.MAX_DELAY - EC/ct.MAX_ENRCONS - (EC/ct.MAX_ENRCONS).var() - (RT/ct.MAX_RP_TTI).var()
         R = TH/ct.MAX_BANDWIDTH + 3 - D/ct.MAX_DELAY - EC/ct.MAX_ENRCONS - (EC/ct.MAX_ENRCONS).var()
         
@@ -1301,7 +1303,7 @@ class PPO_MP_ATCNSF(LightningModule):
         #     # quietRun('rm -r outputs/content/videos/')
         #     # quietRun('tensorboard --logdir outputs/logs/')
         # except Exception as ex:
-        #     logger.warn(ex)
+        #     logger.warning(ex)
 
         # algo = SAC('SAC_CTRL_SSDWSN', lr=1e-3, alpha=0.002, tau=0.1)
         logger.info('NSFP START TRAINING ...')
@@ -1657,7 +1659,7 @@ class RPLS(LightningModule):
         #     # quietRun('rm -r outputs/content/videos/')
         #     # quietRun('tensorboard --logdir outputs/logs/')
         # except Exception as ex:
-        #     logger.warn(ex)
+        #     logger.warning(ex)
 
         # algo = SAC('SAC_CTRL_SSDWSN', lr=1e-3, alpha=0.002, tau=0.1)
         logger.info('START TRAINING ...')
@@ -2017,7 +2019,7 @@ class DRLIR(LightningModule):
         #     # quietRun('rm -r outputs/content/videos/')
         #     # quietRun('tensorboard --logdir outputs/logs/')
         # except Exception as ex:
-        #     logger.warn(ex)
+        #     logger.warning(ex)
 
         # algo = SAC('SAC_CTRL_SSDWSN', lr=1e-3, alpha=0.002, tau=0.1)
         logger.info('START TRAINING ...')
@@ -2354,7 +2356,7 @@ class RLSDWSN(LightningModule):
         #     # quietRun('rm -r outputs/content/videos/')
         #     # quietRun('tensorboard --logdir outputs/logs/')
         # except Exception as ex:
-        #     logger.warn(ex)
+        #     logger.warning(ex)
 
         # algo = SAC('SAC_CTRL_SSDWSN', lr=1e-3, alpha=0.002, tau=0.1)
         logger.info('START TRAINING ...')

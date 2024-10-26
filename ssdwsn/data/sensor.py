@@ -142,34 +142,48 @@ class Pressure(Sensor):
             loop (AbstractEventLoop): asyncio event loop of the parent process
         """
         super().__init__(sensorType=SensorType.pressure)
-        
+
 class Temperature(Sensor):
     """Temperature Sensor"""
     def __init__(self, node):
-        """Initiate a temperature sensor
-        - val: is a temperature values is a normal distribution of a mean (mu) of a 
-        uniform distribution of random degree values between -30C and 50C and sigma = 10
-        - timeout: inter transsmition time is 5 seconds (timeout = 5.0 sec)
+        """
+        Initiate a temperature sensor
+        - val: Temperature values are generated using a normal distribution
+          with a mean (mu) from a uniform distribution of random degree values
+          between -30C and 50C and sigma = 10.
+        - timeout: Transmission interval is generated using an exponential distribution 
+          with an average timeout value of 10 seconds (lambda = 1/10).
+        
         Args:
-            loop (AbstractEventLoop): asyncio event loop of the parent process
+            node: Node object that owns this sensor
         """
         super().__init__(sensorType=SensorType.temperature, node=node)
-        self.meanTemp = random.uniform(-30, 50)
-        
+        self.meanTemp = random.uniform(-30, 50)  # Random mean temperature
+
     def run(self):
         async def async_thread():
             sqNo = 0
             while True:
-                val= str(round(random.normalvariate(self.meanTemp, 10),1))+" C"
-                timeout= 5
-                timeout= float(random.uniform(5,15))
-                data = bytearray((val+' sq'+str(sqNo)).encode()) # adding seq to the payload to get a uniqe hashed value for calculating the delay of received data packet.
+                # Generate temperature value using normal distribution
+                val = str(round(random.normalvariate(self.meanTemp, 10), 1)) + " C"
+                
+                # Generate transmission interval using exponential distribution
+                timeout = random.expovariate(1 / 10)  # mean timeout is 5 seconds
+                
+                # Create data payload with sequence number
+                data = bytearray((val + ' sq' + str(sqNo)).encode()) # adding seq to the payload to get a unique hashed value for calculating the delay of received data packet.
+                
                 try:
+                    # Put the generated data into the sensing queue
                     self.node.sensingQueue.put_nowait((data, sqNo, time.time()))
                 except asyncio.QueueFull as e:
-                    logger.warn(e)
+                    logger.warning(e)
+                
+                # Wait for the next transmission (based on the exponential timeout)
                 await asyncio.sleep(timeout)
                 sqNo += 1
+        
+        # Run the asynchronous thread
         asyncio.run(async_thread())
         
 # class Proximity(Sensor):
@@ -214,7 +228,7 @@ class SwitchOnOff(Sensor):
                 try:
                     self.node.sensingQueue.put_nowait((data, sqNo, time.time()))
                 except asyncio.QueueFull as e:
-                    logger.warn(e)
+                    logger.warning(e)
                 await asyncio.sleep(timeout)
                 sqNo += 1
         asyncio.run(async_thread())
@@ -260,7 +274,7 @@ class Sound(Sensor):
                 try:
                     self.node.sensingQueue.put_nowait((data, sqNo, time.time()))
                 except asyncio.QueueFull as e:
-                    logger.warn(e)
+                    logger.warning(e)
                 await asyncio.sleep(timeout)
                 sqNo += 1
         asyncio.run(async_thread())
@@ -299,7 +313,7 @@ class Camera(Sensor):
                         try:
                             self.node.sensingQueue.put_nowait((data, sqNo, time.time()))
                         except asyncio.QueueFull as e:
-                            logger.warn(e)
+                            logger.warning(e)
                         await asyncio.sleep(timeout)
                 else:
                     #no motion, no data, sleep random time
